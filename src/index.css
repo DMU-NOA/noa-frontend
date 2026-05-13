@@ -1,0 +1,6 @@
+@import "tailwindcss"; /* v4 문법으로 변경! */
+
+/* 브라우저 기본 스크롤바 숨기기 (모바일 앱처럼 보이게) */
+::-webkit-scrollbar {
+  display: none;
+}
