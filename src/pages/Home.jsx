@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Search, Globe, Loader2 } from 'lucide-react';
 import BottomNav from '../components/BottomNav';
 import apiClient from '../api/client';
 
 export default function Home() {
+  const navigate = useNavigate();
   const [spots, setSpots] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [keyword, setKeyword] = useState("");
@@ -28,7 +30,7 @@ export default function Home() {
 
     try {
       setIsLoading(true);
-      // 백엔드의 검색 엔드포인트 호출
+       // 백엔드의 검색 엔드포인트 호출    
       const response = await apiClient.get(`/api/spots/search?keyword=${keyword}`);
       setSpots(response.data);
     } catch (error) {
@@ -64,7 +66,7 @@ export default function Home() {
           />
           <Search 
             className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 cursor-pointer" 
-            onClick={handleSearch} // 돋보기 아이콘 클릭 시에도 검색
+            onClick={handleSearch}
           />
         </div>
       </div>
@@ -88,8 +90,9 @@ export default function Home() {
           ) : (
             spots.map((spot) => (
               <div 
-                key={spot.id} 
-                className="bg-white rounded-3xl flex items-center shadow-[0_6px_30px_rgb(0,0,0,0.04)] border border-gray-100 overflow-hidden active:scale-[0.98] transition-transform" 
+                key={spot.id}
+                onClick={() => navigate(`/spots/${spot.id}`)}
+                className="bg-white rounded-3xl flex items-center shadow-[0_6px_30px_rgb(0,0,0,0.04)] border border-gray-100 overflow-hidden active:scale-[0.98] transition-transform cursor-pointer" 
               >
                 <div className="w-36 h-36 bg-gray-100 overflow-hidden shrink-0"> 
                   <img src={spot.image} alt={spot.name} className="w-full h-full object-cover" />
