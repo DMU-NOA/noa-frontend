@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { ArrowLeft, MapPin, Users } from "lucide-react";
 import BottomNav from "../components/BottomNav";
 
@@ -103,7 +104,8 @@ function SpotCard({ spot, onClick }) {
   );
 }
 
-export default function AlternativeSpots({ originSpot = "경복궁", onBack }) {
+export default function AlternativeSpots({ originSpot = "경복궁" }) { 
+  const navigate = useNavigate();
   const [selected, setSelected] = useState(null);
 
   return (
@@ -111,7 +113,7 @@ export default function AlternativeSpots({ originSpot = "경복궁", onBack }) {
       {/* 헤더 */}
       <header className="px-5 py-4 flex items-center gap-3 bg-white shadow-sm shrink-0">
         <button
-          onClick={onBack}
+          onClick={() => navigate(-1)} 
           className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
         >
           <ArrowLeft className="w-5 h-5 text-gray-700" />
