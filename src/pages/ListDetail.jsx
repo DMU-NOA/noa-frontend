@@ -58,7 +58,6 @@ export default function ListDetail() {
         {/* 대안 관광지 버튼 - 상단 배치 */}
         <button
           type="button"
-          onClick={() => navigate('/alter')} 
           onClick={() => navigate('/alternatives')} 
           className="w-full h-16 rounded-2xl bg-blue-600 text-white text-lg font-black mb-6"
         >
