@@ -14,7 +14,7 @@ export default function Home() {
     try {
       setIsLoading(true);
       const response = await apiClient.get('/api/spots');
-      setSpots(response.data);
+      setSpots(response.data.data);
     } catch (error) {
       console.error("데이터 로드 실패:", error);
     } finally {
@@ -22,22 +22,15 @@ export default function Home() {
     }
   };
 
-  const handleSearch = async () => {
-    if (!keyword.trim()) {
-      fetchDefaultSpots(); // 검색어가 없으면 다시 기본 리스트로
-      return;
-    }
-
-    try {
-      setIsLoading(true);
-       // 백엔드의 검색 엔드포인트 호출    
-      const response = await apiClient.get(`/api/spots/search?keyword=${keyword}`);
-      setSpots(response.data);
-    } catch (error) {
-      console.error("검색 실패:", error);
-    } finally {
-      setIsLoading(false);
-    }
+  // 💡 [핵심] 혼잡도 레벨에 따라 화면에 보여줄 색상과 텍스트를 결정하는 함수
+  const getCongestionStyle = (level) => {
+    if (!level || level === '데이터 없음') 
+      return { dot: 'bg-gray-300', text: 'text-gray-400', label: '정보없음' };
+    if (level.includes('혼잡') || level.includes('붐빔')) 
+      return { dot: 'bg-red-500', text: 'text-red-500', label: '혼잡' };
+    if (level.includes('보통')) 
+      return { dot: 'bg-orange-400', text: 'text-orange-500', label: '보통' };
+    return { dot: 'bg-emerald-500', text: 'text-emerald-600', label: '여유' };
   };
 
   useEffect(() => {
@@ -53,8 +46,8 @@ export default function Home() {
         </button>
       </header>
 
-      {/* 검색 바: 입력 및 엔터 이벤트 연결 */}
       <div className="px-6 py-3 bg-white sticky top-0 z-10">
+        {/* 검색 바는 기존과 동일하게 유지 */}
         <div className="relative">
           <input
             type="text"
@@ -62,12 +55,8 @@ export default function Home() {
             className="w-full bg-gray-50 text-gray-800 rounded-xl py-3 px-5 pr-10 focus:outline-none focus:ring-2 focus:ring-blue-500/10 border border-gray-100 text-sm"
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSearch()} // 엔터 치면 검색 실행
           />
-          <Search 
-            className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 cursor-pointer" 
-            onClick={handleSearch}
-          />
+          <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 cursor-pointer" />
         </div>
       </div>
 
@@ -85,34 +74,40 @@ export default function Home() {
           ) : spots.length === 0 ? (
             <div className="py-10 text-center text-gray-400">
               <p className="text-sm font-medium">검색 결과가 없습니다.</p>
-              <p className="text-xs mt-1">다른 키워드로 검색해 보세요.</p>
             </div>
           ) : (
-            spots.map((spot) => (
-              <div 
-                key={spot.id}
-                onClick={() => navigate(`/spots/${spot.id}`)}
-                className="bg-white rounded-3xl flex items-center shadow-[0_6px_30px_rgb(0,0,0,0.04)] border border-gray-100 overflow-hidden active:scale-[0.98] transition-transform cursor-pointer" 
-              >
-                <div className="w-36 h-36 bg-gray-100 overflow-hidden shrink-0"> 
-                  <img src={spot.image} alt={spot.name} className="w-full h-full object-cover" />
-                </div>
-                
-                <div className="p-5 flex-1 flex flex-col gap-2"> 
-                  <div className="flex flex-col gap-0.5">
-                    <h3 className="text-[16px] font-bold text-gray-900">{spot.name}</h3> 
-                    <p className="text-xs text-gray-400 line-clamp-1">{spot.location}</p>
+            spots.map((spot) => {
+              // 💡 여기서 각 장소별 스타일 결정
+              const status = getCongestionStyle(spot.congestion_level);
+              
+              return (
+                <div 
+                  key={spot.area_cd}
+                  onClick={() => navigate(`/spots/${spot.area_cd}`)} 
+                  className="bg-white rounded-3xl flex items-center shadow-[0_6px_30px_rgb(0,0,0,0.04)] border border-gray-100 overflow-hidden active:scale-[0.98] transition-transform cursor-pointer" 
+                >
+                  <div className="w-36 h-36 bg-gray-100 overflow-hidden shrink-0"> 
+                    {/* 💡 image_url 사용 */}
+                    <img src={spot.image_url} alt={spot.name} className="w-full h-full object-cover" />
                   </div>
+                  
+                  <div className="p-5 flex-1 flex flex-col gap-2"> 
+                    <div className="flex flex-col gap-0.5">
+                      <h3 className="text-[16px] font-bold text-gray-900">{spot.name}</h3> 
+                      <p className="text-xs text-gray-400 line-clamp-1">{spot.address}</p>
+                    </div>
 
-                  <div className="flex items-center mt-0.5">
-                    <span className={`w-2 h-2 rounded-full ${spot.dotColor} mr-2`}></span>
-                    <span className={`text-xs font-bold ${spot.textColor}`}>
-                      {spot.status}
-                    </span>
+                    <div className="flex items-center mt-0.5">
+                      {/* 💡 계산된 status 정보 사용 */}
+                      <span className={`w-2 h-2 rounded-full ${status.dot} mr-2`}></span>
+                      <span className={`text-xs font-bold ${status.text}`}>
+                        {status.label}
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       </main>
