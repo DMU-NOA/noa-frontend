@@ -53,12 +53,12 @@ export default function ListDetail() {
         </div>
 
         <button
-          type="button"
-          onClick={() => navigate('/alternatives')}
-          className="w-full h-16 rounded-2xl bg-blue-600 text-white text-lg font-black mb-6"
-        >
-          대안 관광지 보기
-        </button>
+  type="button"
+  onClick={() => navigate('/alternatives', { state: { area_cd: id } })} 
+  className="w-full h-16 rounded-2xl bg-blue-600 text-white text-lg font-black mb-6"
+>
+  대안 관광지 보기
+</button>
 
         <div className="w-full h-52 rounded-3xl overflow-hidden bg-blue-100 mb-5">
           <img

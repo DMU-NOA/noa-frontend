@@ -7,14 +7,17 @@ import apiClient from '../api/client';
 export default function Home() {
   const navigate = useNavigate();
   const [spots, setSpots] = useState([]);
+  const [recommendations, setRecommendations] = useState([]); // 💡 추천 목록 상태 추가
   const [isLoading, setIsLoading] = useState(true);
   const [keyword, setKeyword] = useState("");
 
+  // 기본 목록 불러오기
   const fetchDefaultSpots = async () => {
     try {
       setIsLoading(true);
       const response = await apiClient.get('/api/spots');
       setSpots(response.data.data);
+      setRecommendations([]); // 검색 결과 초기화
     } catch (error) {
       console.error("데이터 로드 실패:", error);
     } finally {
@@ -22,7 +25,29 @@ export default function Home() {
     }
   };
 
-  // 💡 [핵심] 혼잡도 레벨에 따라 화면에 보여줄 색상과 텍스트를 결정하는 함수
+  // 검색 로직
+  const handleSearch = async () => {
+    if (!keyword.trim()) {
+      fetchDefaultSpots();
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      // 백엔드의 새로운 검색 API 구조에 맞춰 results와 recommendations를 받음
+      const response = await apiClient.get(`/api/spots/search?keyword=${keyword}`);
+      setSpots(response.data.results);
+      setRecommendations(response.data.recommendations);
+    } catch (error) {
+      console.error("검색 실패:", error);
+      setSpots([]);
+      setRecommendations([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 혼잡도 스타일 함수
   const getCongestionStyle = (level) => {
     if (!level || level === '데이터 없음') 
       return { dot: 'bg-gray-300', text: 'text-gray-400', label: '정보없음' };
@@ -47,7 +72,6 @@ export default function Home() {
       </header>
 
       <div className="px-6 py-3 bg-white sticky top-0 z-10">
-        {/* 검색 바는 기존과 동일하게 유지 */}
         <div className="relative">
           <input
             type="text"
@@ -55,12 +79,17 @@ export default function Home() {
             className="w-full bg-gray-50 text-gray-800 rounded-xl py-3 px-5 pr-10 focus:outline-none focus:ring-2 focus:ring-blue-500/10 border border-gray-100 text-sm"
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
           />
-          <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 cursor-pointer" />
+          <Search 
+            className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 cursor-pointer" 
+            onClick={handleSearch}
+          />
         </div>
       </div>
 
       <main className="px-6 py-6 pb-24">
+        {/* 1. 검색 결과 섹션 */}
         <h2 className="text-lg font-bold text-gray-900 mb-4">
           {keyword ? `'${keyword}' 검색 결과` : "서울 주요 관광지"}
         </h2>
@@ -77,9 +106,7 @@ export default function Home() {
             </div>
           ) : (
             spots.map((spot) => {
-              // 💡 여기서 각 장소별 스타일 결정
               const status = getCongestionStyle(spot.congestion_level);
-              
               return (
                 <div 
                   key={spot.area_cd}
@@ -87,18 +114,14 @@ export default function Home() {
                   className="bg-white rounded-3xl flex items-center shadow-[0_6px_30px_rgb(0,0,0,0.04)] border border-gray-100 overflow-hidden active:scale-[0.98] transition-transform cursor-pointer" 
                 >
                   <div className="w-36 h-36 bg-gray-100 overflow-hidden shrink-0"> 
-                    {/* 💡 image_url 사용 */}
                     <img src={spot.image_url} alt={spot.name} className="w-full h-full object-cover" />
                   </div>
-                  
                   <div className="p-5 flex-1 flex flex-col gap-2"> 
                     <div className="flex flex-col gap-0.5">
                       <h3 className="text-[16px] font-bold text-gray-900">{spot.name}</h3> 
                       <p className="text-xs text-gray-400 line-clamp-1">{spot.address}</p>
                     </div>
-
                     <div className="flex items-center mt-0.5">
-                      {/* 💡 계산된 status 정보 사용 */}
                       <span className={`w-2 h-2 rounded-full ${status.dot} mr-2`}></span>
                       <span className={`text-xs font-bold ${status.text}`}>
                         {status.label}
@@ -110,6 +133,28 @@ export default function Home() {
             })
           )}
         </div>
+
+        {/* 2. 비슷한 테마 추천 섹션 */}
+        {keyword && recommendations.length > 0 && (
+          <section className="mt-10">
+            <h3 className="text-lg font-bold text-gray-900 mb-4">비슷한 테마의 장소</h3>
+            <div className="flex flex-col gap-4">
+              {recommendations.map((rec) => (
+                <div 
+                  key={rec.area_cd}
+                  onClick={() => navigate(`/spots/${rec.area_cd}`)} 
+                  className="bg-white rounded-3xl flex items-center shadow-[0_6px_30px_rgb(0,0,0,0.04)] border border-gray-100 p-4 active:scale-[0.98] transition-transform cursor-pointer" 
+                >
+                  <img src={rec.image_url} alt={rec.name} className="w-20 h-20 rounded-2xl object-cover" />
+                  <div className="ml-4 flex-1">
+                    <h4 className="font-bold text-sm text-gray-900">{rec.name}</h4>
+                    <p className="text-xs text-gray-400 mt-1">{rec.address}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
       </main>
 
       <BottomNav activeTab="home" />
