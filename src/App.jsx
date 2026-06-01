@@ -1,8 +1,44 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { useEffect } from "react";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+  useNavigate,
+  useLocation,
+} from "react-router-dom";
 import Home from "./pages/Home";
 import ListDetail from "./pages/ListDetail";
 import LoginPage from "./pages/Login";
 import AlternativeSpots from "./pages/AlterPage";
+import { saveToken, isLoggedIn } from "./api/auth";
+
+// 소셜 로그인 후 백엔드가 /?token=xxx 로 리다이렉트 → 토큰 저장 후 홈으로 이동
+function CallbackHandler() {
+  const navigate = useNavigate();
+  const { search } = useLocation();
+
+  useEffect(() => {
+    const params = new URLSearchParams(search);
+    const token = params.get("token");
+    if (token) {
+      saveToken(token);
+      navigate("/", { replace: true });
+    } else {
+      navigate("/login", { replace: true });
+    }
+  }, []);
+
+  return null;
+}
+
+// 로그인 안 된 상태면 /login으로 보내는 가드
+function PrivateRoute({ children }) {
+  if (!isLoggedIn()) {
+    return <Navigate to="/login" replace />;
+  }
+  return children;
+}
 
 function App() {
   return (
@@ -12,11 +48,40 @@ function App() {
         <div className="w-full max-w-md bg-white h-screen relative overflow-hidden flex flex-col shadow-2xl">
           <div className="flex-1 overflow-y-auto pb-16">
             <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/list-detail" element={<ListDetail />} />
-              <Route path="/spots/:id" element={<ListDetail />} />
               <Route path="/login" element={<LoginPage />} />
-              <Route path="/alternatives" element={<AlternativeSpots />} />
+              <Route path="/callback" element={<CallbackHandler />} />
+              <Route
+                path="/"
+                element={
+                  <PrivateRoute>
+                    <Home />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/list-detail"
+                element={
+                  <PrivateRoute>
+                    <ListDetail />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/spots/:id"
+                element={
+                  <PrivateRoute>
+                    <ListDetail />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/alternatives"
+                element={
+                  <PrivateRoute>
+                    <AlternativeSpots />
+                  </PrivateRoute>
+                }
+              />
             </Routes>
           </div>
         </div>

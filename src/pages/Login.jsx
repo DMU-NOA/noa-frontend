@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { FcGoogle } from "react-icons/fc";
 import { RiKakaoTalkFill } from "react-icons/ri";
+import { loginWithGoogle, loginWithKakao } from "../api/auth";
 
 const PROVIDERS = [
   {
@@ -10,6 +11,7 @@ const PROVIDERS = [
     className: "bg-[#FEE500] border-[#FEE500]",
     textClassName: "text-[#191919]",
     spinnerClassName: "border-yellow-600 border-t-transparent",
+    action: loginWithKakao,
   },
   {
     id: "Google",
@@ -18,20 +20,17 @@ const PROVIDERS = [
     className: "bg-white border-gray-200 shadow-sm hover:bg-gray-50",
     textClassName: "text-gray-900",
     spinnerClassName: "border-gray-300 border-t-gray-600",
+    action: loginWithGoogle,
   },
 ];
 
 export default function LoginPage() {
   const [loadingProvider, setLoadingProvider] = useState(null);
 
-  const handleSocialLogin = async (provider) => {
+  const handleSocialLogin = (provider, action) => {
     if (loadingProvider) return;
     setLoadingProvider(provider);
-    // TODO: 실제 소셜 로그인 연결
-    // if (provider === 'Kakao')  await signInWithKakao();
-    // if (provider === 'Google') await signInWithGoogle();
-    await new Promise((r) => setTimeout(r, 1000));
-    setLoadingProvider(null);
+    action(); // 백엔드 OAuth URL로 리다이렉트 (페이지 이동이라 로딩 상태는 시각적 피드백용)
   };
 
   return (
@@ -49,12 +48,12 @@ export default function LoginPage() {
       {/* 버튼 영역 */}
       <div className="w-full max-w-xs flex flex-col gap-3">
         {PROVIDERS.map(
-          ({ id, label, icon, className, textClassName, spinnerClassName }) => (
+          ({ id, label, icon, className, textClassName, spinnerClassName, action }) => (
             <button
               key={id}
               type="button"
               disabled={loadingProvider !== null}
-              onClick={() => handleSocialLogin(id)}
+              onClick={() => handleSocialLogin(id, action)}
               className={`w-full h-[54px] border rounded-2xl flex items-center px-5 relative active:scale-[0.98] transition-transform disabled:opacity-60 disabled:cursor-not-allowed ${className}`}
             >
               <span className="absolute left-5">
