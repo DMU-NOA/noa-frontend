@@ -36,7 +36,7 @@ export default function MapPage() {
   const handleSpotSelect = (spot) => {
     setSelectedSpot(spot);
     if (mapRef.current) {
-      mapRef.current.setCenter(new window.kakao.maps.LatLng(spot.mapy, spot.mapx));
+      mapRef.current?.setCenter(new window.kakao.maps.LatLng(spot.mapy, spot.mapx));
     }
     setSearchResults([]);
   };
@@ -79,7 +79,7 @@ export default function MapPage() {
 
       {/* 내 위치 이동 버튼 */}
       <button 
-        onClick={() => mapRef.current.setCenter(new window.kakao.maps.LatLng(myPos.lat, myPos.lng))}
+        onClick={() => mapRef.current?.setCenter(new window.kakao.maps.LatLng(myPos.lat, myPos.lng))}
         className="absolute bottom-24 right-4 z-50 bg-white p-3 rounded-full shadow-lg"
       >
         <Locate className="w-6 h-6 text-blue-600" />
@@ -125,40 +125,38 @@ export default function MapPage() {
               </CustomOverlayMap>
 
               {/* 3. 모달 */}
-              {isSelected && (
-                <CustomOverlayMap position={{ lat: spot.mapy, lng: spot.mapx }} yAnchor={1.4}>
-                  <div 
-                    className="bg-white p-4 rounded-3xl shadow-2xl w-56 border border-gray-100 animate-in fade-in zoom-in duration-200 cursor-default"
-                    onClick={(e) => e.stopPropagation()} // 💡 클릭이 지도로 뚫고 들어가는 것 방지
-                  >
-                    <img 
-                      src={spot.image_url} 
-                      alt={spot.name} 
-                      className="w-full h-24 object-cover rounded-xl mb-3 bg-gray-100" 
-                    />
-                    <h4 className="font-black text-gray-900 text-sm mb-1 truncate">{spot.name}</h4>
-                    <p className="text-[11px] text-gray-500 mb-2 truncate">{spot.address}</p>
+{isSelected && (
+  <CustomOverlayMap 
+    position={{ lat: spot.mapy, lng: spot.mapx }} 
+    yAnchor={1.4}
+    clickable={true} // 💡 핵심 해결책: 지도 바닥으로 클릭이 뚫고 나가는 것을 완벽하게 막아줍니다!
+  >
+    <div className="bg-white p-4 rounded-3xl shadow-2xl w-56 border border-gray-100 animate-in fade-in zoom-in duration-200 cursor-default">
+      <img 
+        src={spot.image_url} 
+        alt={spot.name} 
+        className="w-full h-24 object-cover rounded-xl mb-3 bg-gray-100" 
+      />
+      <h4 className="font-black text-gray-900 text-sm mb-1 truncate">{spot.name}</h4>
+      <p className="text-[11px] text-gray-500 mb-2 truncate">{spot.address}</p>
 
-                    {/* 💡 추가된 부분: 혼잡도 뱃지 */}
-                    <div className="flex items-center gap-1.5 mb-3 bg-gray-50 p-1.5 rounded-lg w-fit pr-3">
-                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: spotColor }}></div>
-                      <span className="text-[11px] font-bold text-gray-700">
-                        현재 <span style={{ color: spotColor }}>{spot.congestion_level}</span>
-                      </span>
-                    </div>
+      {/* 혼잡도 뱃지 */}
+      <div className="flex items-center gap-1.5 mb-3 bg-gray-50 p-1.5 rounded-lg w-fit pr-3">
+        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: spotColor }}></div>
+        <span className="text-[11px] font-bold text-gray-700">
+          현재 <span style={{ color: spotColor }}>{spot.congestion_level}</span>
+        </span>
+      </div>
 
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation(); // 💡 버튼 클릭 시에도 이벤트 전파 방지
-                        navigate(`/spots/${spot.area_cd}`);
-                      }}
-                      className="w-full bg-blue-600 text-white text-xs font-bold py-2 rounded-xl active:scale-95 transition-transform"
-                    >
-                      상세 정보 보기
-                    </button>
-                  </div>
-                </CustomOverlayMap>
-              )}
+      <button 
+        onClick={() => navigate(`/spots/${spot.area_cd}`)} // 💡 이제 e.stopPropagation() 없이도 잘 작동합니다.
+        className="w-full bg-blue-600 text-white text-xs font-bold py-2 rounded-xl active:scale-95 transition-transform"
+      >
+        상세 정보 보기
+      </button>
+    </div>
+  </CustomOverlayMap>
+)}
             </div>
           );
         })}

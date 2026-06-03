@@ -28,7 +28,7 @@ function CallbackHandler() {
     } else {
       navigate("/login", { replace: true });
     }
-  }, []);
+  }, [navigate, search]);
 
   return null;
 }
