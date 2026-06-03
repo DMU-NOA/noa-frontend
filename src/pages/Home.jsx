@@ -47,13 +47,15 @@ export default function Home() {
     }
   };
 
-  // 혼잡도 스타일 함수
-  const getCongestionStyle = (level) => {
-    if (!level || level === '데이터 없음') 
+const getCongestionStyle = (level) => {
+    // 💡 데이터가 null/undefined면 빈 문자열로, 아니면 무조건 문자열로 변환
+    const safeLevel = String(level ?? "");
+
+    if (!safeLevel || safeLevel === '데이터 없음') 
       return { dot: 'bg-gray-300', text: 'text-gray-400', label: '정보없음' };
-    if (level.includes('혼잡') || level.includes('붐빔')) 
+    if (safeLevel.includes('혼잡') || safeLevel.includes('붐빔')) 
       return { dot: 'bg-red-500', text: 'text-red-500', label: '혼잡' };
-    if (level.includes('보통')) 
+    if (safeLevel.includes('보통')) 
       return { dot: 'bg-orange-400', text: 'text-orange-500', label: '보통' };
     return { dot: 'bg-emerald-500', text: 'text-emerald-600', label: '여유' };
   };

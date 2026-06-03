@@ -12,6 +12,7 @@ import ListDetail from "./pages/ListDetail";
 import LoginPage from "./pages/Login";
 import AlternativeSpots from "./pages/AlterPage";
 import { saveToken, isLoggedIn } from "./api/auth";
+import MapPage from "./pages/MapPage";
 
 // 소셜 로그인 후 백엔드가 /?token=xxx 로 리다이렉트 → 토큰 저장 후 홈으로 이동
 function CallbackHandler() {
@@ -53,35 +54,37 @@ function App() {
               <Route
                 path="/"
                 element={
-                  <PrivateRoute>
+                  //<PrivateRoute>
                     <Home />
-                  </PrivateRoute>
+                  //</PrivateRoute>
                 }
               />
               <Route
                 path="/list-detail"
                 element={
-                  <PrivateRoute>
+                  //<PrivateRoute>
                     <ListDetail />
-                  </PrivateRoute>
+                  //</PrivateRoute>
                 }
               />
               <Route
                 path="/spots/:id"
                 element={
-                  <PrivateRoute>
+                  //<PrivateRoute>
                     <ListDetail />
-                  </PrivateRoute>
+                  //</PrivateRoute>
                 }
               />
               <Route
                 path="/alternatives"
                 element={
-                  <PrivateRoute>
+                  //<PrivateRoute>
                     <AlternativeSpots />
-                  </PrivateRoute>
+                  //</PrivateRoute>
                 }
               />
+              <Route path="/alternatives" element={<AlternativeSpots />} />
+              <Route path="/map" element={<MapPage />} />
             </Routes>
           </div>
         </div>

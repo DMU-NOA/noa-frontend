@@ -7,7 +7,7 @@ export default function BottomNav({ activeTab }) {
   const menus = [
     { id: 'home', icon: Home, label: '홈', path: '/' },
     { id: 'search', icon: Search, label: '검색', path: '#' }, // 나중에 구현
-    { id: 'map', icon: Map, label: '지도', path: '#' }, // 나중에 구현
+    { id: 'map', icon: Map, label: '지도', path: '/map' }, // 나중에 구현
     { id: 'my', icon: User, label: '마이', path: '/login' },
   ];
 
