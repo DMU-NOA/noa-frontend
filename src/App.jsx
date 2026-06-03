@@ -54,33 +54,33 @@ function App() {
               <Route
                 path="/"
                 element={
-                  //<PrivateRoute>
+                  <PrivateRoute>
                     <Home />
-                  //</PrivateRoute>
+                  </PrivateRoute>
                 }
               />
               <Route
                 path="/list-detail"
                 element={
-                  //<PrivateRoute>
+                  <PrivateRoute>
                     <ListDetail />
-                  //</PrivateRoute>
+                  </PrivateRoute>
                 }
               />
               <Route
                 path="/spots/:id"
                 element={
-                  //<PrivateRoute>
+                  <PrivateRoute>
                     <ListDetail />
-                  //</PrivateRoute>
+                  </PrivateRoute>
                 }
               />
               <Route
                 path="/alternatives"
                 element={
-                  //<PrivateRoute>
+                  <PrivateRoute>
                     <AlternativeSpots />
-                  //</PrivateRoute>
+                  </PrivateRoute>
                 }
               />
               <Route path="/alternatives" element={<AlternativeSpots />} />
