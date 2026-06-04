@@ -13,6 +13,7 @@ import LoginPage from "./pages/Login";
 import AlternativeSpots from "./pages/AlterPage";
 import { saveToken, isLoggedIn } from "./api/auth";
 import MapPage from "./pages/MapPage";
+import ChatPage from "./pages/ChatPage";
 
 // 소셜 로그인 후 백엔드가 /?token=xxx 로 리다이렉트 → 토큰 저장 후 홈으로 이동
 function CallbackHandler() {
@@ -85,6 +86,7 @@ function App() {
               />
               <Route path="/alternatives" element={<AlternativeSpots />} />
               <Route path="/map" element={<MapPage />} />
+              <Route path="/chat" element={<ChatPage />} />
             </Routes>
           </div>
         </div>
