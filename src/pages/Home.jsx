@@ -1,8 +1,16 @@
-import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Search, Globe, Loader2, MapPin, SlidersHorizontal } from 'lucide-react';
-import BottomNav from '../components/BottomNav';
-import apiClient from '../api/client';
+import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  Search,
+  Globe,
+  Loader2,
+  MapPin,
+  SlidersHorizontal,
+  Heart,
+} from "lucide-react";
+import BottomNav from "../components/BottomNav";
+import apiClient from "../api/client";
+import { isLoggedIn } from "../api/auth";
 
 const FILTERS = ['전체', '🍃 쾌적한 곳', '🌳 공원·자연', '🏛️ 역사·문화', '🛍️ 핫플레이스'];
 
@@ -41,6 +49,8 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [keyword, setKeyword] = useState("");
   const [activeFilter, setActiveFilter] = useState('전체');
+  const [likedSet, setLikedSet] = useState(new Set());
+  const [toast, setToast] = useState(false);
 
   // 드래그 훅 연결
   const filterScroll = useDragScroll();
@@ -68,7 +78,7 @@ export default function Home() {
       const response = await apiClient.get(`/api/spots/search?keyword=${keyword}`);
       setSpots(response.data.results);
       setRecommendations(response.data.recommendations);
-      setActiveFilter('전체'); 
+      setActiveFilter('전체');
     } catch (error) {
       console.error("검색 실패:", error);
       setSpots([]);
@@ -88,7 +98,41 @@ export default function Home() {
 
   useEffect(() => {
     fetchDefaultSpots();
+    // 좋아요 목록 로드
+    apiClient
+      .get("/api/likes")
+      .then((res) => setLikedSet(new Set(res.data.map((l) => l.area_cd))))
+      .catch(() => {});
   }, []);
+
+  const showToast = () => {
+    setToast(true);
+    setTimeout(() => setToast(false), 2500);
+  };
+
+  const handleLike = async (e, area_cd) => {
+    e.stopPropagation();
+    if (!isLoggedIn()) {
+      showToast();
+      return;
+    }
+    const isLiked = likedSet.has(area_cd);
+    try {
+      if (isLiked) {
+        await apiClient.delete(`/api/likes/${area_cd}`);
+        setLikedSet((prev) => {
+          const s = new Set(prev);
+          s.delete(area_cd);
+          return s;
+        });
+      } else {
+        await apiClient.post("/api/likes", { area_cd });
+        setLikedSet((prev) => new Set(prev).add(area_cd));
+      }
+    } catch (err) {
+      console.error("좋아요 실패:", err);
+    }
+  };
 
   const filteredSpots = spots.filter(spot => {
     if (activeFilter === '전체') return true;
@@ -101,7 +145,13 @@ export default function Home() {
 
   return (
     <div className="w-full min-h-screen bg-white font-['Pretendard','Noto_Sans_KR',sans-serif] pb-24 relative">
-      
+      {/* 로그인 필요 토스트 */}
+      {toast && (
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 bg-gray-900 text-white text-sm font-bold px-5 py-3 rounded-2xl shadow-lg flex items-center gap-2 animate-in fade-in slide-in-from-top-2 duration-200">
+          🔒 로그인이 필요합니다.
+        </div>
+      )}
+
       {/* 1. 상단 헤더 */}
       <header className="px-5 py-4 flex justify-between items-center bg-white sticky top-0 z-30">
         <h1 className="text-2xl font-black text-blue-600 tracking-tight">NOA</h1>
@@ -199,16 +249,31 @@ export default function Home() {
                       alt={spot.name} 
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" 
                     />
-                    
                     <div className="absolute top-4 left-4 bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-full flex items-center shadow-sm">
-                      <span className={`w-2.5 h-2.5 rounded-full ${status.dot} mr-2 animate-pulse`}></span>
-                      <span className={`text-[13px] font-black tracking-tight ${status.text}`}>
+                      <span
+                        className={`w-2.5 h-2.5 rounded-full ${status.dot} mr-2 animate-pulse`}
+                      ></span>
+                      <span
+                        className={`text-[13px] font-black tracking-tight ${status.text}`}
+                      >
                         {status.label}
                       </span>
                     </div>
 
-                    <div className="absolute top-4 right-4 bg-black/50 backdrop-blur-md px-3 py-1.5 rounded-full">
-                      <span className="text-[11px] font-bold text-white tracking-wider">{spot.category}</span>
+                    <div className="absolute top-4 right-4 flex items-center gap-2">
+                      <div className="bg-black/50 backdrop-blur-md px-3 py-1.5 rounded-full">
+                        <span className="text-[11px] font-bold text-white tracking-wider">
+                          {spot.category}
+                        </span>
+                      </div>
+                      <button
+                        onClick={(e) => handleLike(e, spot.area_cd)}
+                        className="w-9 h-9 bg-white/90 backdrop-blur-md rounded-full flex items-center justify-center shadow-sm active:scale-90 transition-transform"
+                      >
+                        <Heart
+                          className={`w-4 h-4 transition-colors ${likedSet.has(spot.area_cd) ? "fill-red-500 text-red-500" : "text-gray-400"}`}
+                        />
+                      </button>
                     </div>
                   </div>
 

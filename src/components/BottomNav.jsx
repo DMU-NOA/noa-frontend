@@ -20,7 +20,7 @@ export default function BottomNav() {
     // 💡 AI 비서 색상도 text-blue-500으로 통일!
     { id: 'chat', icon: Sparkles, label: 'AI 비서', path: '/chat', activeColor: 'text-blue-500' }, 
     { id: 'map', icon: Map, label: '지도', path: '/map', activeColor: 'text-blue-500' }, 
-    { id: 'my', icon: User, label: '마이', path: '/login', activeColor: 'text-blue-500' },
+    { id: 'my', icon: User, label: '마이', path: '/mypage', activeColor: 'text-blue-500' },
   ];
 
   const handleNavigation = (path) => {

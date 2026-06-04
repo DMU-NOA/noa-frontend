@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ChevronLeft, MapPin, User, CloudSun, Car, CalendarDays, X, Loader2, Sparkles } from 'lucide-react';
+import { ChevronLeft, MapPin, User, CloudSun, Car, CalendarDays, X, Loader2, Sparkles, Heart } from 'lucide-react';
 import BottomNav from '../components/BottomNav';
 import apiClient from '../api/client';
 
@@ -37,10 +37,11 @@ export default function ListDetail() {
   
   const [spot, setSpot] = useState(null);
   const [forecast, setForecast] = useState([]);
-  const [addInfo, setAddInfo] = useState(null); 
+  const [addInfo, setAddInfo] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [activeModal, setActiveModal] = useState(null); 
-  const [loadingAddInfo, setLoadingAddInfo] = useState(false); 
+  const [activeModal, setActiveModal] = useState(null);
+  const [loadingAddInfo, setLoadingAddInfo] = useState(false);
+  const [liked, setLiked] = useState(false); 
 
   const weatherScroll = useDragScroll();
 
@@ -60,6 +61,10 @@ export default function ListDetail() {
         
         setSpot(spotRes.data);
         setForecast(forecastRes.data.forecast);
+
+        // 좋아요 여부 확인
+        const likeRes = await apiClient.get(`/api/likes/check/${id}`);
+        setLiked(likeRes.data.liked);
       } catch (error) {
         console.error("데이터 로드 실패:", error);
       } finally {
@@ -68,6 +73,20 @@ export default function ListDetail() {
     };
     fetchSpotDetail();
   }, [id]);
+
+  // 좋아요 토글
+  const handleLike = async () => {
+    try {
+      if (liked) {
+        await apiClient.delete(`/api/likes/${id}`);
+      } else {
+        await apiClient.post('/api/likes', { area_cd: id });
+      }
+      setLiked(!liked);
+    } catch (error) {
+      console.error("좋아요 처리 실패:", error);
+    }
+  };
 
   const handleOpenModal = async (type) => {
     setActiveModal(type); 
@@ -121,7 +140,16 @@ export default function ListDetail() {
           <button type="button" onClick={() => navigate(-1)} className="active:scale-90 transition-transform">
             <ChevronLeft className="w-7 h-7 text-gray-900" />
           </button>
-          <h1 className="text-2xl font-black text-gray-900 truncate">{spot.name}</h1>
+          <h1 className="text-2xl font-black text-gray-900 truncate flex-1">{spot.name}</h1>
+          <button
+            type="button"
+            onClick={handleLike}
+            className="shrink-0 active:scale-90 transition-transform"
+          >
+            <Heart
+              className={`w-7 h-7 transition-colors ${liked ? 'fill-red-500 text-red-500' : 'text-gray-300'}`}
+            />
+          </button>
         </div>
 
         <div className="w-full h-60 rounded-3xl overflow-hidden bg-gray-100 mb-5 relative shadow-sm border border-gray-50">
