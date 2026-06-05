@@ -11,8 +11,7 @@ import {
 import BottomNav from "../components/BottomNav";
 import apiClient from "../api/client";
 import { isLoggedIn } from "../api/auth";
-
-const FILTERS = ['전체', '🍃 쾌적한 곳', '🌳 공원·자연', '🏛️ 역사·문화', '🛍️ 핫플레이스'];
+import { useLanguage } from "../contexts/LanguageContext"; // 💡 언어 전역 상태 가져오기
 
 // 💡 [추가] 카테고리 필터 마우스 드래그 스크롤을 위한 커스텀 훅
 function useDragScroll() {
@@ -44,21 +43,47 @@ function useDragScroll() {
 
 export default function Home() {
   const navigate = useNavigate();
+  const { lang, toggleLang } = useLanguage(); // 💡 언어 상태와 변경 함수 꺼내기
+
   const [spots, setSpots] = useState([]);
   const [recommendations, setRecommendations] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [keyword, setKeyword] = useState("");
-  const [activeFilter, setActiveFilter] = useState('전체');
+  const [activeFilter, setActiveFilter] = useState('all'); // 💡 필터 상태를 영어 키값으로 관리
   const [likedSet, setLikedSet] = useState(new Set());
   const [toast, setToast] = useState(false);
 
-  // 드래그 훅 연결
   const filterScroll = useDragScroll();
+
+  // 💡 다국어 텍스트 사전
+  const t = {
+    ko: {
+      searchPlaceholder: "어디로 떠나고 싶으신가요?",
+      searchResult: "검색 결과",
+      noDataTitle: "조건에 맞는 장소가 없어요.",
+      noDataDesc: "다른 키워드나 필터를 선택해 보세요!",
+      loading: "서울의 핫플레이스를 탐색 중입니다...",
+      recommendTitle: "이런 곳은 어떠세요?",
+      loginRequired: "🔒 로그인이 필요합니다.",
+      filters: { 'all': '전체', 'relax': '🍃 쾌적한 곳', 'nature': '🌳 공원·자연', 'history': '🏛️ 역사·문화', 'hotplace': '🛍️ 핫플레이스' }
+    },
+    en: {
+      searchPlaceholder: "Where do you want to go?",
+      searchResult: "Search Results",
+      noDataTitle: "No places found.",
+      noDataDesc: "Try adjusting your filters or search keyword!",
+      loading: "Exploring hot places in Seoul...",
+      recommendTitle: "How about these places?",
+      loginRequired: "🔒 Login Required.",
+      filters: { 'all': 'All', 'relax': '🍃 Relaxing', 'nature': '🌳 Nature', 'history': '🏛️ History', 'hotplace': '🛍️ Hotplaces' }
+    }
+  };
 
   const fetchDefaultSpots = async () => {
     try {
       setIsLoading(true);
-      const response = await apiClient.get('/api/spots');
+      // 💡 백엔드에 ?lang=en 또는 ?lang=ko 파라미터 전달
+      const response = await apiClient.get(`/api/spots?lang=${lang}`);
       setSpots(response.data.data);
       setRecommendations([]);
     } catch (error) {
@@ -75,10 +100,11 @@ export default function Home() {
     }
     try {
       setIsLoading(true);
-      const response = await apiClient.get(`/api/spots/search?keyword=${keyword}`);
+      // 💡 검색 시에도 lang 파라미터 전달
+      const response = await apiClient.get(`/api/spots/search?keyword=${keyword}&lang=${lang}`);
       setSpots(response.data.results);
       setRecommendations(response.data.recommendations);
-      setActiveFilter('전체');
+      setActiveFilter('all');
     } catch (error) {
       console.error("검색 실패:", error);
       setSpots([]);
@@ -88,14 +114,16 @@ export default function Home() {
     }
   };
 
+  // 💡 영어 혼잡도 데이터('Crowded', 'Normal' 등) 호환 처리
   const getCongestionStyle = (level) => {
-    const safeLevel = String(level ?? "");
-    if (!safeLevel || safeLevel === '데이터 없음') return { dot: 'bg-gray-300', text: 'text-gray-500', label: '정보없음' };
-    if (safeLevel.includes('혼잡') || safeLevel.includes('붐빔')) return { dot: 'bg-red-500', text: 'text-red-600', label: '혼잡' };
-    if (safeLevel.includes('보통')) return { dot: 'bg-orange-400', text: 'text-orange-600', label: '보통' };
-    return { dot: 'bg-emerald-500', text: 'text-emerald-700', label: '여유' };
+    const safeLevel = String(level ?? "").toLowerCase();
+    if (!safeLevel || safeLevel === '데이터 없음' || safeLevel === 'no data') return { dot: 'bg-gray-300', text: 'text-gray-500', label: lang === 'en' ? 'No Data' : '정보없음' };
+    if (safeLevel.includes('혼잡') || safeLevel.includes('붐빔') || safeLevel.includes('crowd')) return { dot: 'bg-red-500', text: 'text-red-600', label: lang === 'en' ? 'Crowded' : '혼잡' };
+    if (safeLevel.includes('보통') || safeLevel.includes('normal') || safeLevel.includes('moderate')) return { dot: 'bg-orange-400', text: 'text-orange-600', label: lang === 'en' ? 'Normal' : '보통' };
+    return { dot: 'bg-emerald-500', text: 'text-emerald-700', label: lang === 'en' ? 'Relax' : '여유' };
   };
 
+  // 💡 언어가 바뀔 때마다 데이터를 새로 불러옵니다
   useEffect(() => {
     fetchDefaultSpots();
     // 좋아요 목록 로드
@@ -103,7 +131,7 @@ export default function Home() {
       .get("/api/likes")
       .then((res) => setLikedSet(new Set(res.data.map((l) => l.area_cd))))
       .catch(() => {});
-  }, []);
+  }, [lang]);
 
   const showToast = () => {
     setToast(true);
@@ -134,12 +162,16 @@ export default function Home() {
     }
   };
 
+  // 💡 영문 카테고리도 인식할 수 있도록 필터링 로직 확장
   const filteredSpots = spots.filter(spot => {
-    if (activeFilter === '전체') return true;
-    if (activeFilter === '🍃 쾌적한 곳') return spot.congestion_level?.includes('여유') || spot.congestion_level?.includes('보통');
-    if (activeFilter === '🌳 공원·자연') return spot.category?.includes('공원') || spot.category?.includes('자연') || spot.category?.includes('숲');
-    if (activeFilter === '🏛️ 역사·문화') return spot.category?.includes('궁궐') || spot.category?.includes('박물관') || spot.category?.includes('미술관') || spot.category?.includes('역사');
-    if (activeFilter === '🛍️ 핫플레이스') return spot.category?.includes('상권') || spot.category?.includes('특구') || spot.category?.includes('거리');
+    const cat = spot.category || "";
+    const lvl = spot.congestion_level || "";
+    
+    if (activeFilter === 'all') return true;
+    if (activeFilter === 'relax') return lvl.includes('여유') || lvl.includes('보통') || lvl.toLowerCase().includes('relax') || lvl.toLowerCase().includes('normal') || lvl.toLowerCase().includes('moderate');
+    if (activeFilter === 'nature') return cat.includes('공원') || cat.includes('자연') || cat.includes('숲') || cat.toLowerCase().includes('park') || cat.toLowerCase().includes('nature');
+    if (activeFilter === 'history') return cat.includes('궁궐') || cat.includes('박물관') || cat.includes('미술관') || cat.includes('역사') || cat.toLowerCase().includes('palace') || cat.toLowerCase().includes('museum') || cat.toLowerCase().includes('heritage');
+    if (activeFilter === 'hotplace') return cat.includes('상권') || cat.includes('특구') || cat.includes('거리') || cat.toLowerCase().includes('street') || cat.toLowerCase().includes('district') || cat.toLowerCase().includes('zone');
     return true;
   });
 
@@ -148,26 +180,31 @@ export default function Home() {
       {/* 로그인 필요 토스트 */}
       {toast && (
         <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 bg-gray-900 text-white text-sm font-bold px-5 py-3 rounded-2xl shadow-lg flex items-center gap-2 animate-in fade-in slide-in-from-top-2 duration-200">
-          🔒 로그인이 필요합니다.
+          {t[lang].loginRequired}
         </div>
       )}
 
       {/* 1. 상단 헤더 */}
       <header className="px-5 py-4 flex justify-between items-center bg-white sticky top-0 z-30">
         <h1 className="text-2xl font-black text-blue-600 tracking-tight">NOA</h1>
-        <button className="flex items-center text-xs font-bold text-gray-500 bg-gray-50 rounded-full px-3 py-1.5 active:scale-95 transition-transform">
-          <Globe className="w-3.5 h-3.5 mr-1.5" /> 한 / EN
+        {/* 💡 한/영 전환 버튼 */}
+        <button 
+          onClick={toggleLang}
+          className="flex items-center text-xs font-bold text-gray-500 bg-gray-50 rounded-full px-3 py-1.5 active:scale-95 transition-transform"
+        >
+          <Globe className="w-3.5 h-3.5 mr-1.5 text-blue-500" /> 
+          {lang === 'ko' ? '한 / EN' : 'EN / 한'}
         </button>
       </header>
 
-      {/* 💡 2. 검색창 + 필터바 통합 블록 (틈이 벌어지지 않도록 하나로 묶음) */}
-      <div className="bg-white sticky top-[62px] z-20 border-b border-gray-100 shadow-[0_4px_15px_rgba(0,0,0,0.02)]">
+      {/* 2. 검색창 + 필터바 통합 블록 */}
+      <div className="bg-white sticky top-15.5 z-20 border-b border-gray-100 shadow-[0_4px_15px_rgba(0,0,0,0.02)]">
         {/* 검색창 영역 */}
         <div className="px-5 pb-3 pt-1">
           <div className="relative">
             <input
               type="text"
-              placeholder="어디로 떠나고 싶으신가요?"
+              placeholder={t[lang].searchPlaceholder}
               className="w-full bg-gray-100 text-gray-900 font-medium rounded-2xl py-3.5 px-5 pr-12 focus:outline-none focus:ring-2 focus:ring-blue-500/20 border-transparent text-[15px] placeholder:text-gray-400 shadow-inner"
               value={keyword}
               onChange={(e) => setKeyword(e.target.value)}
@@ -194,17 +231,18 @@ export default function Home() {
               <div className="flex items-center justify-center p-2 rounded-full bg-gray-50 shrink-0 border border-gray-100 pointer-events-none">
                 <SlidersHorizontal className="w-4 h-4 text-gray-400" />
               </div>
-              {FILTERS.map(filter => (
+              {/* 💡 다국어 필터 키 적용 */}
+              {Object.keys(t[lang].filters).map(key => (
                 <button
-                  key={filter}
-                  onClick={() => setActiveFilter(filter)}
+                  key={key}
+                  onClick={() => setActiveFilter(key)}
                   className={`shrink-0 px-4 py-2 rounded-full text-[13px] font-bold transition-all ${
-                    activeFilter === filter 
+                    activeFilter === key 
                       ? 'bg-gray-900 text-white shadow-md' 
                       : 'bg-white border border-gray-200 text-gray-600 active:bg-gray-50'
                   }`}
                 >
-                  {filter}
+                  {t[lang].filters[key]}
                 </button>
               ))}
             </div>
@@ -216,32 +254,31 @@ export default function Home() {
       <main className="pt-4">
         {keyword && (
           <h2 className="px-5 text-lg font-black text-gray-900 mb-5">
-            &apos;{keyword}&apos; 검색 결과 <span className="text-blue-600">{filteredSpots.length}</span>건
+            &apos;{keyword}&apos; {t[lang].searchResult} <span className="text-blue-600">{filteredSpots.length}</span>
           </h2>
         )}
         
-        {/* 💡 카드 리스트 래퍼 (gap을 없애고 대신 카드 하단에 두꺼운 여백을 넣음) */}
+        {/* 카드 리스트 래퍼 */}
         <div className="flex flex-col">
           {isLoading ? (
             <div className="py-20 flex flex-col items-center justify-center text-gray-400">
               <Loader2 className="w-8 h-8 animate-spin text-blue-500 mb-3" />
-              <p className="text-sm font-bold">서울의 핫플레이스를 탐색 중입니다...</p>
+              <p className="text-sm font-bold">{t[lang].loading}</p>
             </div>
           ) : filteredSpots.length === 0 ? (
             <div className="py-20 flex flex-col items-center justify-center text-gray-400">
               <span className="text-4xl mb-3">👻</span>
-              <p className="text-[15px] font-bold text-gray-600">조건에 맞는 장소가 없어요.</p>
-              <p className="text-sm mt-1">다른 키워드나 필터를 선택해 보세요!</p>
+              <p className="text-[15px] font-bold text-gray-600">{t[lang].noDataTitle}</p>
+              <p className="text-sm mt-1">{t[lang].noDataDesc}</p>
             </div>
           ) : (
             filteredSpots.map((spot) => {
               const status = getCongestionStyle(spot.congestion_level);
               return (
-                // 💡 4. 카드 구분선 추가: 아래쪽에 두꺼운 회색 선(border-b-[8px])으로 공간 분리!
                 <div 
                   key={spot.area_cd}
                   onClick={() => navigate(`/spots/${spot.area_cd}`)} 
-                  className="flex flex-col group cursor-pointer active:bg-gray-50 transition-colors duration-300 pb-8 pt-4 px-5 border-b-[8px] border-gray-50 last:border-b-0" 
+                  className="flex flex-col group cursor-pointer active:bg-gray-50 transition-colors duration-300 pb-8 pt-4 px-5 border-b-8 border-gray-50 last:border-b-0" 
                 >
                   <div className="w-full h-64 rounded-3xl overflow-hidden bg-gray-100 relative mb-4 shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-gray-100/50"> 
                     <img 
@@ -291,9 +328,9 @@ export default function Home() {
         </div>
 
         {keyword && recommendations.length > 0 && (
-          <section className="mt-8 px-5 pt-8 border-t-[8px] border-gray-50">
+          <section className="mt-8 px-5 pt-8 border-t-8 border-gray-50">
             <h3 className="text-[19px] font-black text-gray-900 mb-5 flex items-center gap-2">
-              <span className="text-2xl">✨</span> 이런 곳은 어떠세요?
+              <span className="text-2xl">✨</span> {t[lang].recommendTitle}
             </h3>
             <div className="flex gap-4 overflow-x-auto pb-4" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
               {recommendations.map((rec) => (

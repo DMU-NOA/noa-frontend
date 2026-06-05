@@ -3,7 +3,6 @@ import {
   BrowserRouter,
   Routes,
   Route,
-  Navigate,
   useNavigate,
   useLocation,
 } from "react-router-dom";
@@ -15,6 +14,7 @@ import { saveToken, isLoggedIn } from "./api/auth";
 import MapPage from "./pages/MapPage";
 import ChatPage from "./pages/ChatPage";
 import MyPage from "./pages/MyPage";
+import { LanguageProvider } from "./contexts/LanguageContext";
 
 // 소셜 로그인 후 백엔드가 /?token=xxx 로 리다이렉트 → 토큰 저장 후 홈으로 이동
 function CallbackHandler() {
@@ -73,6 +73,7 @@ function LoginRequired() {
 function App() {
   return (
     <BrowserRouter>
+    <LanguageProvider>
       {/* 바탕은 회색(bg-gray-100), 중앙에 모바일 사이즈(max-w-md)의 하얀색(bg-white) 앱 화면 띄우기 */}
       <div className="min-h-screen bg-gray-100 flex justify-center font-sans text-gray-800">
         <div className="w-full max-w-md bg-white h-screen relative overflow-hidden flex flex-col shadow-2xl">
@@ -120,6 +121,7 @@ function App() {
           </div>
         </div>
       </div>
+      </LanguageProvider>
     </BrowserRouter>
   );
 }
