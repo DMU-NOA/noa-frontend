@@ -51,17 +51,25 @@ export default function ListDetail() {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        // 👇 API 주소 끝에 ?lang=${lang} 추가
+        // 1. 관광지 기본 정보 로드
         const spotRes = await apiClient.get(`/api/spots/${id}?lang=${lang}`);
         setSpot(spotRes.data);
         
-        // (기존 좋아요 로직 그대로 유지)
+        // 💡 2. 좋아요(찜) 상태 초기 확인 추가!
+        try {
+          const likesRes = await apiClient.get(`/api/likes?lang=${lang}`);
+          // 내 찜 목록(likesRes.data) 중에 현재 관광지 id(area_cd)가 있는지 확인
+          const isAlreadyLiked = likesRes.data.some((item) => item.area_cd === id);
+          setLiked(isAlreadyLiked); // 있으면 true(빨간 하트), 없으면 false(빈 하트)
+        } catch (likeErr) {
+          console.error('좋아요 상태 확인 실패:', likeErr);
+        }
 
-        // 👇 API 주소 끝에 ?lang=${lang} 추가
+        // 3. 혼잡도 예측 데이터 로드
         const forecastRes = await apiClient.get(`/api/spots/${id}/forecast?lang=${lang}`);
         setForecast(forecastRes.data.forecast);
         
-        // 👇 API 주소 끝에 ?lang=${lang} 추가
+        // 4. 날씨/교통 등 부가정보 로드
         const infoRes = await apiClient.get(`/api/spots/${id}/additional-info?lang=${lang}`);
         setAddInfo(infoRes.data);
       } catch (err) {
@@ -71,7 +79,6 @@ export default function ListDetail() {
       }
     };
     fetchData();
-  // 👇 맨 끝 배열에 lang 추가
   }, [id, lang]);
 
   // 좋아요 토글
