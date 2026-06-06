@@ -2,6 +2,7 @@ import { useState } from "react";
 import { FcGoogle } from "react-icons/fc";
 import { RiKakaoTalkFill } from "react-icons/ri";
 import { loginWithGoogle, loginWithKakao } from "../api/auth";
+import { useLanguage } from "../contexts/LanguageContext";
 
 const PROVIDERS = [
   {
@@ -26,6 +27,7 @@ const PROVIDERS = [
 
 export default function LoginPage() {
   const [loadingProvider, setLoadingProvider] = useState(null);
+  const { lang } = useLanguage();
 
   const handleSocialLogin = (provider, action) => {
     if (loadingProvider) return;
@@ -68,7 +70,10 @@ export default function LoginPage() {
               <span
                 className={`flex-1 text-center text-[15px] font-bold ${textClassName}`}
               >
-                {loadingProvider === id ? "로그인 중..." : label}
+                {loadingProvider === id 
+                  ? (lang === 'en' ? "Logging in..." : "로그인 중...") 
+                  : (lang === 'en' ? (id === 'Kakao' ? 'Continue with Kakao' : 'Continue with Google') : label)
+                }
               </span>
             </button>
           ),
@@ -76,21 +81,15 @@ export default function LoginPage() {
 
         {/* 약관 */}
         <p className="text-center text-xs text-gray-400 leading-relaxed mt-2">
-          계속 진행하면{" "}
-          <button
-            type="button"
-            className="text-gray-500 underline underline-offset-2 font-medium"
-          >
-            이용약관
-          </button>{" "}
-          및{" "}
-          <button
-            type="button"
-            className="text-gray-500 underline underline-offset-2 font-medium"
-          >
-            개인정보처리방침
+          {lang === 'en' ? "By continuing, you agree to our " : "계속 진행하면 "}
+          <button type="button" className="text-gray-500 underline underline-offset-2 font-medium">
+            {lang === 'en' ? "Terms of Service" : "이용약관"}
           </button>
-          에 동의합니다.
+          {lang === 'en' ? " and " : " 및 "}
+          <button type="button" className="text-gray-500 underline underline-offset-2 font-medium">
+            {lang === 'en' ? "Privacy Policy" : "개인정보처리방침"}
+          </button>
+          {lang === 'en' ? "." : "에 동의한 것으로 간주됩니다."}
         </p>
       </div>
     </div>
