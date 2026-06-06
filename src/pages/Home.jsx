@@ -65,7 +65,7 @@ export default function Home() {
       loading: "서울의 핫플레이스를 탐색 중입니다...",
       recommendTitle: "이런 곳은 어떠세요?",
       loginRequired: "🔒 로그인이 필요합니다.",
-      filters: { 'all': '전체', 'relax': '🍃 쾌적한 곳', 'nature': '🌳 공원·자연', 'history': '🏛️ 역사·문화', 'hotplace': '🛍️ 핫플레이스' }
+      filters: { 'all': '전체', 'relax': '쾌적한 곳', 'nature': '공원·자연', 'history': '역사·문화', 'hotplace': '핫플레이스' }
     },
     en: {
       searchPlaceholder: "Where do you want to go?",
@@ -75,7 +75,7 @@ export default function Home() {
       loading: "Exploring hot places in Seoul...",
       recommendTitle: "How about these places?",
       loginRequired: "🔒 Login Required.",
-      filters: { 'all': 'All', 'relax': '🍃 Relaxing', 'nature': '🌳 Nature', 'history': '🏛️ History', 'hotplace': '🛍️ Hotplaces' }
+      filters: { 'all': 'All', 'relax': 'Relaxing', 'nature': 'Nature', 'history': 'History', 'hotplace': 'Hotplaces' }
     }
   };
 
@@ -114,13 +114,12 @@ export default function Home() {
     }
   };
 
-  // 💡 영어 혼잡도 데이터('Crowded', 'Normal' 등) 호환 처리
   const getCongestionStyle = (level) => {
-    const safeLevel = String(level ?? "").toLowerCase();
-    if (!safeLevel || safeLevel === '데이터 없음' || safeLevel === 'no data') return { dot: 'bg-gray-300', text: 'text-gray-500', label: lang === 'en' ? 'No Data' : '정보없음' };
-    if (safeLevel.includes('혼잡') || safeLevel.includes('붐빔') || safeLevel.includes('crowd')) return { dot: 'bg-red-500', text: 'text-red-600', label: lang === 'en' ? 'Crowded' : '혼잡' };
-    if (safeLevel.includes('보통') || safeLevel.includes('normal') || safeLevel.includes('moderate')) return { dot: 'bg-orange-400', text: 'text-orange-600', label: lang === 'en' ? 'Normal' : '보통' };
-    return { dot: 'bg-emerald-500', text: 'text-emerald-700', label: lang === 'en' ? 'Relax' : '여유' };
+    const s = String(level ?? "").toLowerCase();
+    if (!s || s === '데이터 없음' || s === 'no data') return { bg: 'bg-white/20', text: 'text-white/70', label: lang === 'en' ? 'No Data' : '정보없음' };
+    if (s.includes('혼잡') || s.includes('붐빔') || s.includes('crowd')) return { bg: 'bg-red-500/80', text: 'text-white', label: lang === 'en' ? 'Crowded' : '혼잡' };
+    if (s.includes('보통') || s.includes('normal') || s.includes('moderate')) return { bg: 'bg-orange-400/80', text: 'text-white', label: lang === 'en' ? 'Normal' : '보통' };
+    return { bg: 'bg-emerald-500/80', text: 'text-white', label: lang === 'en' ? 'Quiet' : '여유' };
   };
 
   // 💡 언어가 바뀔 때마다 데이터를 새로 불러옵니다
@@ -176,70 +175,67 @@ export default function Home() {
   });
 
   return (
-    <div className="w-full min-h-screen bg-white font-['Pretendard','Noto_Sans_KR',sans-serif] pb-24 relative">
-      {/* 로그인 필요 토스트 */}
+    <div className="w-full min-h-screen bg-[#F5F6F8] pb-24">
+      {/* 토스트 */}
       {toast && (
-        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 bg-gray-900 text-white text-sm font-bold px-5 py-3 rounded-2xl shadow-lg flex items-center gap-2 animate-in fade-in slide-in-from-top-2 duration-200">
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 bg-gray-900/95 text-white text-[13px] font-medium px-4 py-2.5 rounded-full shadow-lg">
           {t[lang].loginRequired}
         </div>
       )}
 
-      {/* 1. 상단 헤더 */}
+      {/* 헤더 */}
       <header className="px-5 py-4 flex justify-between items-center bg-white sticky top-0 z-30">
         <h1 className="text-2xl font-black text-blue-600 tracking-tight">NOA</h1>
         {/* 💡 한/영 전환 버튼 */}
         <button 
           onClick={toggleLang}
-          className="flex items-center text-xs font-bold text-gray-500 bg-gray-50 rounded-full px-3 py-1.5 active:scale-95 transition-transform"
+          className="flex items-center gap-1.5 text-[12px] font-medium text-gray-500 bg-white border border-gray-200 rounded-full px-3 py-1.5 active:scale-95 transition-transform shadow-sm"
         >
-          <Globe className="w-3.5 h-3.5 mr-1.5 text-blue-500" /> 
+          <Globe className="w-3 h-3 text-blue-500" />
           {lang === 'ko' ? '한 / EN' : 'EN / 한'}
         </button>
       </header>
 
-      {/* 2. 검색창 + 필터바 통합 블록 */}
-      <div className="bg-white sticky top-15.5 z-20 border-b border-gray-100 shadow-[0_4px_15px_rgba(0,0,0,0.02)]">
-        {/* 검색창 영역 */}
-        <div className="px-5 pb-3 pt-1">
+      {/* 검색 + 필터 */}
+      <div className="bg-[#F5F6F8] sticky top-[62px] z-20 pb-2">
+        <div className="px-4 pb-2">
           <div className="relative">
             <input
               type="text"
               placeholder={t[lang].searchPlaceholder}
-              className="w-full bg-gray-100 text-gray-900 font-medium rounded-2xl py-3.5 px-5 pr-12 focus:outline-none focus:ring-2 focus:ring-blue-500/20 border-transparent text-[15px] placeholder:text-gray-400 shadow-inner"
+              className="w-full bg-white text-gray-900 rounded-2xl py-3.5 pl-5 pr-12 text-[14px] placeholder:text-gray-400 border border-gray-200/80 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
               value={keyword}
               onChange={(e) => setKeyword(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
             />
-            <button 
+            <button
               onClick={handleSearch}
-              className="absolute right-3 top-1/2 -translate-y-1/2 p-2 bg-blue-600 rounded-xl active:scale-95 transition-transform"
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-gray-400 hover:text-blue-500 active:scale-95 transition-all"
             >
-              <Search className="w-4 h-4 text-white" />
+              <Search className="w-5 h-5" />
             </button>
           </div>
         </div>
 
-        {/* 카테고리 필터 영역 (마우스 드래그 적용) */}
         {!keyword && (
-          <div className="px-5 pb-3">
-            <div 
+          <div className="px-4">
+            <div
               ref={filterScroll.ref}
-              className={`flex items-center gap-2 overflow-x-auto pb-1 ${filterScroll.className}`} 
-              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+              className={`flex items-center gap-2 overflow-x-auto ${filterScroll.className}`}
+              style={{ scrollbarWidth: 'none' }}
               {...filterScroll.events}
             >
-              <div className="flex items-center justify-center p-2 rounded-full bg-gray-50 shrink-0 border border-gray-100 pointer-events-none">
-                <SlidersHorizontal className="w-4 h-4 text-gray-400" />
+              <div className="p-1.5 rounded-full bg-white border border-gray-200 shrink-0 pointer-events-none shadow-sm">
+                <SlidersHorizontal className="w-3.5 h-3.5 text-gray-400" />
               </div>
-              {/* 💡 다국어 필터 키 적용 */}
               {Object.keys(t[lang].filters).map(key => (
                 <button
                   key={key}
                   onClick={() => setActiveFilter(key)}
-                  className={`shrink-0 px-4 py-2 rounded-full text-[13px] font-bold transition-all ${
-                    activeFilter === key 
-                      ? 'bg-gray-900 text-white shadow-md' 
-                      : 'bg-white border border-gray-200 text-gray-600 active:bg-gray-50'
+                  className={`shrink-0 px-3.5 py-1.5 rounded-full text-[12px] font-semibold transition-all ${
+                    activeFilter === key
+                      ? 'bg-blue-600 text-white shadow-sm shadow-blue-200'
+                      : 'bg-white border border-gray-200 text-gray-500 active:bg-gray-50'
                   }`}
                 >
                   {t[lang].filters[key]}
@@ -250,75 +246,70 @@ export default function Home() {
         )}
       </div>
 
-      {/* 3. 리스트 메인 영역 */}
-      <main className="pt-4">
+      {/* 리스트 */}
+      <main className="px-4 pt-3">
         {keyword && (
-          <h2 className="px-5 text-lg font-black text-gray-900 mb-5">
-            &apos;{keyword}&apos; {t[lang].searchResult} <span className="text-blue-600">{filteredSpots.length}</span>
-          </h2>
+          <p className="text-[13px] text-gray-500 mb-3 px-1">
+            <span className="font-bold text-gray-900">&apos;{keyword}&apos;</span> {t[lang].searchResult} · <span className="text-blue-500 font-bold">{filteredSpots.length}</span>
+          </p>
         )}
-        
-        {/* 카드 리스트 래퍼 */}
-        <div className="flex flex-col">
+
+        <div className="flex flex-col gap-3">
           {isLoading ? (
-            <div className="py-20 flex flex-col items-center justify-center text-gray-400">
-              <Loader2 className="w-8 h-8 animate-spin text-blue-500 mb-3" />
-              <p className="text-sm font-bold">{t[lang].loading}</p>
+            <div className="py-24 flex flex-col items-center gap-3 text-gray-400">
+              <Loader2 className="w-6 h-6 animate-spin text-blue-500" />
+              <p className="text-[13px]">{t[lang].loading}</p>
             </div>
           ) : filteredSpots.length === 0 ? (
-            <div className="py-20 flex flex-col items-center justify-center text-gray-400">
-              <span className="text-4xl mb-3">👻</span>
-              <p className="text-[15px] font-bold text-gray-600">{t[lang].noDataTitle}</p>
-              <p className="text-sm mt-1">{t[lang].noDataDesc}</p>
+            <div className="py-24 flex flex-col items-center gap-2">
+              <span className="text-3xl">👻</span>
+              <p className="text-[14px] font-semibold text-gray-600 mt-1">{t[lang].noDataTitle}</p>
+              <p className="text-[12px] text-gray-400">{t[lang].noDataDesc}</p>
             </div>
           ) : (
             filteredSpots.map((spot) => {
               const status = getCongestionStyle(spot.congestion_level);
               return (
-                <div 
+                <div
                   key={spot.area_cd}
-                  onClick={() => navigate(`/spots/${spot.area_cd}`)} 
-                  className="flex flex-col group cursor-pointer active:bg-gray-50 transition-colors duration-300 pb-8 pt-4 px-5 border-b-8 border-gray-50 last:border-b-0" 
+                  onClick={() => navigate(`/spots/${spot.area_cd}`)}
+                  className="group cursor-pointer relative w-full h-[220px] rounded-2xl overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.1)] active:scale-[0.985] transition-transform duration-150"
                 >
-                  <div className="w-full h-64 rounded-3xl overflow-hidden bg-gray-100 relative mb-4 shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-gray-100/50"> 
-                    <img 
-                      src={spot.image_url || 'https://via.placeholder.com/400'} 
-                      alt={spot.name} 
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" 
+                  {/* 풀블리드 이미지 or 폴백 배경 */}
+                  {spot.image_url ? (
+                    <img
+                      src={spot.image_url}
+                      alt={spot.name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                     />
-                    <div className="absolute top-4 left-4 bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-full flex items-center shadow-sm">
-                      <span
-                        className={`w-2.5 h-2.5 rounded-full ${status.dot} mr-2 animate-pulse`}
-                      ></span>
-                      <span
-                        className={`text-[13px] font-black tracking-tight ${status.text}`}
-                      >
-                        {status.label}
-                      </span>
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-gray-600 to-gray-800 flex items-center justify-center">
+                      <MapPin className="w-10 h-10 text-white/20" />
                     </div>
+                  )}
 
-                    <div className="absolute top-4 right-4 flex items-center gap-2">
-                      <div className="bg-black/50 backdrop-blur-md px-3 py-1.5 rounded-full">
-                        <span className="text-[11px] font-bold text-white tracking-wider">
-                          {spot.category}
-                        </span>
-                      </div>
-                      <button
-                        onClick={(e) => handleLike(e, spot.area_cd)}
-                        className="w-9 h-9 bg-white/90 backdrop-blur-md rounded-full flex items-center justify-center shadow-sm active:scale-90 transition-transform"
-                      >
-                        <Heart
-                          className={`w-4 h-4 transition-colors ${likedSet.has(spot.area_cd) ? "fill-red-500 text-red-500" : "text-gray-400"}`}
-                        />
-                      </button>
-                    </div>
+                  {/* 하단 그라디언트 오버레이 */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+
+                  {/* 상단 — 혼잡도 배지 + 좋아요 */}
+                  <div className="absolute top-3 left-3 right-3 flex items-center justify-between">
+                    <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold backdrop-blur-sm ${status.bg} ${status.text}`}>
+                      {status.label}
+                    </span>
+                    <button
+                      onClick={(e) => handleLike(e, spot.area_cd)}
+                      className="w-8 h-8 bg-black/25 backdrop-blur-sm rounded-full flex items-center justify-center active:scale-90 transition-transform"
+                    >
+                      <Heart className={`w-3.5 h-3.5 ${likedSet.has(spot.area_cd) ? 'fill-red-400 text-red-400' : 'text-white'}`} />
+                    </button>
                   </div>
 
-                  <div className="px-1 flex flex-col gap-1.5"> 
-                    <h3 className="text-[19px] font-black text-gray-900 truncate">{spot.name}</h3> 
-                    <div className="flex items-center gap-1.5 text-gray-500">
-                      <MapPin className="w-4 h-4 shrink-0 text-gray-400" />
-                      <p className="text-[14px] font-medium truncate">{spot.address}</p>
+                  {/* 하단 텍스트 */}
+                  <div className="absolute bottom-0 left-0 right-0 px-4 pb-4 pt-8">
+                    <h3 className="text-[17px] font-bold text-white truncate">{spot.name}</h3>
+                    <div className="flex items-center gap-1 mt-1 min-w-0">
+                      <MapPin className="w-3 h-3 text-white/50 shrink-0" />
+                      <span className="text-[12px] text-white/70 truncate">{spot.address}</span>
                     </div>
                   </div>
                 </div>
@@ -327,21 +318,20 @@ export default function Home() {
           )}
         </div>
 
+        {/* 추천 섹션 */}
         {keyword && recommendations.length > 0 && (
-          <section className="mt-8 px-5 pt-8 border-t-8 border-gray-50">
-            <h3 className="text-[19px] font-black text-gray-900 mb-5 flex items-center gap-2">
-              <span className="text-2xl">✨</span> {t[lang].recommendTitle}
-            </h3>
-            <div className="flex gap-4 overflow-x-auto pb-4" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+          <section className="mt-6 pt-5 border-t border-gray-200">
+            <h3 className="text-[15px] font-bold text-gray-900 mb-4">{t[lang].recommendTitle}</h3>
+            <div className="flex gap-3 overflow-x-auto pb-3" style={{ scrollbarWidth: 'none' }}>
               {recommendations.map((rec) => (
-                <div 
+                <div
                   key={rec.area_cd}
-                  onClick={() => navigate(`/spots/${rec.area_cd}`)} 
-                  className="shrink-0 w-40 flex flex-col gap-2 active:scale-95 transition-transform cursor-pointer" 
+                  onClick={() => navigate(`/spots/${rec.area_cd}`)}
+                  className="shrink-0 w-36 cursor-pointer active:scale-95 transition-transform"
                 >
-                  <img src={rec.image_url} alt={rec.name} className="w-40 h-40 rounded-3xl object-cover shadow-sm bg-gray-100" />
-                  <div className="px-1">
-                    <h4 className="font-bold text-[15px] text-gray-900 truncate">{rec.name}</h4>
+                  <img src={rec.image_url} alt={rec.name} className="w-36 h-36 rounded-2xl object-cover bg-gray-100" />
+                  <div className="mt-2 px-0.5">
+                    <h4 className="text-[13px] font-semibold text-gray-900 truncate">{rec.name}</h4>
                     <p className="text-[11px] text-gray-400 mt-0.5 truncate">{rec.address}</p>
                   </div>
                 </div>

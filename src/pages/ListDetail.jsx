@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ChevronLeft, MapPin, User, CloudSun, Car, CalendarDays, X, Loader2, Sparkles, Heart } from 'lucide-react';
+import { ChevronLeft, ChevronRight, MapPin, User, CloudSun, Car, CalendarDays, X, Loader2, Sparkles, Heart, Compass } from 'lucide-react';
 import BottomNav from '../components/BottomNav';
 import apiClient from '../api/client';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -40,10 +40,11 @@ export default function ListDetail() {
   const [spot, setSpot] = useState(null);
   const [forecast, setForecast] = useState([]);
   const [addInfo, setAddInfo] = useState(null);
+  const [alternatives, setAlternatives] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeModal, setActiveModal] = useState(null);
   const [loadingAddInfo, setLoadingAddInfo] = useState(false);
-  const [liked, setLiked] = useState(false); 
+  const [liked, setLiked] = useState(false);
 
   const weatherScroll = useDragScroll();
 
@@ -72,6 +73,12 @@ export default function ListDetail() {
         // 4. 날씨/교통 등 부가정보 로드
         const infoRes = await apiClient.get(`/api/spots/${id}/additional-info?lang=${lang}`);
         setAddInfo(infoRes.data);
+
+        // 5. 대안 장소 미리보기
+        try {
+          const altRes = await apiClient.get(`/api/spots/${id}/alternatives?lang=${lang}`);
+          setAlternatives(altRes.data.alternatives?.slice(0, 3) || []);
+        } catch { /* 대안 없어도 무관 */ }
       } catch (err) {
         console.error('데이터 로드 실패:', err);
       } finally {
@@ -112,7 +119,7 @@ export default function ListDetail() {
   const getCongestionInfo = (level) => {
     const l = level ? level.toLowerCase() : '';
     if (!l || l === '데이터 없음' || l === 'no data') return { rate: 0, text: lang === 'en' ? 'No Data' : '정보없음', color: 'text-gray-400', bar: 'bg-gray-400' };
-    if (l.includes('혼잡') || l.includes('붐빔') || l.includes('crowd')) return { rate: 85, text: lang === 'en' ? 'Crowded' : '혼잡', color: 'text-red-500', bar: 'bg-red-500' };
+    if (l.includes('혼잡') || l.includes('붐빔') || l.includes('crowd')) return { rate: 100, text: lang === 'en' ? 'Crowded' : '혼잡', color: 'text-red-500', bar: 'bg-red-500' };
     if (l.includes('보통') || l.includes('normal')) return { rate: 50, text: lang === 'en' ? 'Normal' : '보통', color: 'text-orange-500', bar: 'bg-orange-400' };
     return { rate: 20, text: lang === 'en' ? 'Relax' : '여유', color: 'text-emerald-500', bar: 'bg-emerald-500' };
   };
@@ -136,90 +143,82 @@ export default function ListDetail() {
       return num;
   };
 
-  if (isLoading) return <div className="p-10 text-center text-gray-500">{lang === 'en' ? 'Loading data...' : '데이터를 불러오는 중...'}</div>;
+  if (isLoading) return (
+    <div className="w-full min-h-screen bg-white flex flex-col items-center justify-center gap-4">
+      <Loader2 className="w-10 h-10 text-blue-500 animate-spin" />
+      <p className="text-[14px] font-medium text-gray-400">{lang === 'en' ? 'Loading data...' : '데이터를 불러오는 중...'}</p>
+    </div>
+  );
   if (!spot) return <div className="p-10 text-center text-gray-500 font-bold">{lang === 'en' ? 'Data not found 😭' : '잘못된 접근이거나 데이터를 찾을 수 없습니다 😭'}</div>;
 
   const info = getCongestionInfo(spot.congestion_level);
 
   return (
     <div className="w-full min-h-full bg-white relative pb-20">
-      
-      {/* 💡 1. 상단 섹션 (사진 및 기본 정보) */}
-      <section className="px-5 pt-6 pb-6">
-        <div className="flex items-center gap-3 mb-5">
-          <button type="button" onClick={() => navigate(-1)} className="active:scale-90 transition-transform">
-            <ChevronLeft className="w-7 h-7 text-gray-900" />
-          </button>
-          <h1 className="text-2xl font-black text-gray-900 truncate flex-1">{spot.name}</h1>
-          <button
-            type="button"
-            onClick={handleLike}
-            className="shrink-0 active:scale-90 transition-transform"
-          >
-            <Heart
-              className={`w-7 h-7 transition-colors ${liked ? 'fill-red-500 text-red-500' : 'text-gray-300'}`}
-            />
-          </button>
-        </div>
 
-        <div className="w-full h-60 rounded-3xl overflow-hidden bg-gray-100 mb-5 relative shadow-sm border border-gray-50">
+      {/* 히어로 이미지 + 오버레이 헤더 */}
+      <div className="relative w-full h-[300px]">
+        {spot.image_url ? (
           <img src={spot.image_url} alt={spot.name} className="w-full h-full object-cover" />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-gray-600 to-gray-800" />
+        )}
+        {/* 상단 그라디언트 */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-black/60" />
+
+        {/* 뒤로가기 + 하트 */}
+        <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-4 pt-5">
+          <button type="button" onClick={() => navigate(-1)} className="w-9 h-9 bg-black/25 backdrop-blur-sm rounded-full flex items-center justify-center active:scale-90 transition-transform">
+            <ChevronLeft className="w-5 h-5 text-white" />
+          </button>
+          <button type="button" onClick={handleLike} className="w-9 h-9 bg-black/25 backdrop-blur-sm rounded-full flex items-center justify-center active:scale-90 transition-transform">
+            <Heart className={`w-4.5 h-4.5 transition-colors ${liked ? 'fill-red-400 text-red-400' : 'text-white'}`} />
+          </button>
         </div>
 
-        <button 
-          onClick={() => navigate('/map', { state: { selectedSpot: spot.area_cd }})}
-          className="w-full flex items-center justify-between text-gray-600 text-sm bg-gray-50 p-4 rounded-2xl border border-gray-100 active:bg-blue-50 active:scale-[0.98] transition-all"
-        >
-          <div className="flex items-center gap-2 overflow-hidden mr-2 text-left">
-            <MapPin className="w-5 h-5 shrink-0 text-blue-500" />
-            <span className="truncate font-semibold">{spot.address}</span>
-          </div>
-          <span className="shrink-0 text-blue-600 font-bold text-[12px] bg-white px-3 py-1.5 rounded-lg shadow-sm">
-            {lang === 'en' ? 'View Map' : '지도 보기'}
-          </span>
-        </button>
-      </section>
+        {/* 하단 장소명 + 주소 */}
+        <div className="absolute bottom-0 left-0 right-0 px-5 pb-5">
+          <h1 className="text-[22px] font-bold text-white mb-1">{spot.name}</h1>
+          <button
+            onClick={() => navigate('/map', { state: { selectedSpot: spot.area_cd }})}
+            className="flex items-center gap-1.5 active:opacity-70 transition-opacity"
+          >
+            <MapPin className="w-3.5 h-3.5 text-white/70 shrink-0" />
+            <span className="text-[13px] text-white/80 truncate">{spot.address}</span>
+          </button>
+        </div>
+      </div>
 
-      {/* 💡 회색 여백 (숨통 틔우기) */}
-      <div className="w-full h-2 bg-gray-50"></div>
+      <div>
 
       {/* 💡 2. 혼잡도 섹션 */}
-      <section className="px-5 py-8">
-        <h2 className="text-lg font-black text-gray-900 mb-6">{lang === 'en' ? 'Current Congestion' : '현재 예상 혼잡도'}</h2>
-        <div className="flex items-center gap-4 mb-6">
-          <div className="flex-1">
-            <div className="h-4 rounded-full bg-gray-100 overflow-hidden">
-              <div
-                className={`h-full rounded-full ${info.bar} bg-linear-to-r transition-all duration-1000`}
-                style={{ width: `${info.rate}%` }}
-              />
-            </div>
-            <div className="flex justify-between text-xs font-bold mt-2">
-              <span className="text-emerald-600">{lang === 'en' ? 'Relax' : '여유'}</span>
-              <span className="text-orange-500">{lang === 'en' ? 'Normal' : '보통'}</span>
-              <span className="text-red-500">{lang === 'en' ? 'Crowded' : '혼잡'}</span>
-            </div>
+      <section className="px-5 pt-8 pb-8">
+        <h2 className="text-lg font-bold text-gray-900 mb-6">{lang === 'en' ? 'Current Congestion' : '현재 예상 혼잡도'}</h2>
+        <div className="mb-6">
+          <div className="h-3 rounded-full bg-gray-100 overflow-hidden mb-2">
+            <div
+              className={`h-full rounded-full ${info.bar} transition-all duration-1000`}
+              style={{ width: `${info.rate}%` }}
+            />
           </div>
-          <div className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 ${info.color.replace('text-', 'bg-').replace('500', '50')}`}>
-            <span className={`w-3 h-3 rounded-full ${info.bar}`} />
-            <span className="text-sm font-black">{info.text}</span>
+          <div className="flex justify-between mt-1.5">
+            {[
+              { key: 'quiet', label: lang === 'en' ? 'Quiet' : '여유', active: info.text === '여유' || info.text === 'Relax', color: 'text-emerald-500' },
+              { key: 'normal', label: lang === 'en' ? 'Normal' : '보통', active: info.text === '보통' || info.text === 'Normal', color: 'text-orange-500' },
+              { key: 'crowded', label: lang === 'en' ? 'Crowded' : '혼잡', active: info.text === '혼잡' || info.text === 'Crowded', color: 'text-red-500' },
+            ].map(({ key, label, active, color }) => (
+              <span key={key} className={active ? `text-[14px] font-bold ${color}` : 'text-[11px] text-gray-300'}>
+                {label}
+              </span>
+            ))}
           </div>
         </div>
 
-        {/* 💡 혼잡도 바로 아래에 대안 관광지 버튼을 배치하여 맥락을 자연스럽게 연결 */}
-        <button
-          type="button"
-          onClick={() => navigate('/alternatives', { state: { area_cd: id } })} 
-          className="w-full flex items-center justify-center gap-2 h-14 rounded-2xl bg-blue-600 text-white text-[15px] font-bold mb-10 active:scale-[0.98] transition-transform shadow-[0_4px_20px_rgba(37,99,235,0.25)]"
-        >
-          <Sparkles className="w-5 h-5" />
-          {lang === 'en' ? 'Find less crowded alternative spots' : '여기보다 덜 붐비는 대안 관광지 찾기'}
-        </button>
 
         {forecast && forecast.length > 0 && (
           <div className="w-full">
             <div className="flex justify-between items-end mb-6">
-                <h3 className="font-bold text-gray-800">{lang === 'en' ? 'Hourly Forecast' : '시간대별 예상 인구'}</h3>
+                <h3 className="text-lg font-bold text-gray-900">{lang === 'en' ? 'Hourly Forecast' : '시간대별 예상 인구'}</h3>
                 <span className="text-[11px] font-medium text-gray-400">{lang === 'en' ? 'Unit: ppl' : '단위: 명 (최대 인구 기준)'}</span>
             </div>
             
@@ -253,12 +252,12 @@ export default function ListDetail() {
         )}
       </section>
 
-      {/* 💡 회색 여백 */}
-      <div className="w-full h-2 bg-gray-50"></div>
+      {/* 섹션 구분선 */}
+      <div className="h-2 bg-gray-50" />
 
       {/* 💡 3. 유용한 정보 및 상세설명 섹션 */}
       <section className="px-5 py-8">
-        <h2 className="text-lg font-black text-gray-900 mb-5">{lang === 'en' ? 'Useful Info' : '유용한 정보'}</h2>
+        <h2 className="text-lg font-bold text-gray-900 mb-5">{lang === 'en' ? 'Useful Info' : '유용한 정보'}</h2>
         <div className="grid grid-cols-3 gap-3 mb-10">
           <button onClick={() => handleOpenModal('weather')} className="flex flex-col items-center justify-center py-5 bg-sky-50 rounded-2xl border border-sky-100 active:scale-95 transition-transform">
             <CloudSun className="w-7 h-7 text-sky-500 mb-2.5" />
@@ -274,7 +273,7 @@ export default function ListDetail() {
           </button>
         </div>
 
-        <h2 className="text-lg font-black text-gray-900 mb-4">{lang === 'en' ? 'Spot Info' : '관광지 정보'}</h2>
+        <h2 className="text-lg font-bold text-gray-900 mb-4">{lang === 'en' ? 'Spot Info' : '관광지 정보'}</h2>
         <div className="flex flex-col gap-4 text-gray-600 text-sm mb-10 bg-gray-50 p-5 rounded-2xl border border-gray-100">
           <button 
             onClick={() => navigate('/map', { state: { selectedSpot: spot.area_cd }})}
@@ -292,11 +291,44 @@ export default function ListDetail() {
           </div>
         </div>
 
-        <h2 className="text-lg font-black text-gray-900 mb-4">소개</h2>
-        <p className="text-[15px] leading-relaxed text-gray-600 bg-gray-50/50 p-5 rounded-2xl border border-gray-100">
+        <div className="h-px bg-gray-100 mb-8" />
+        <h2 className="text-lg font-bold text-gray-900 mb-4">소개</h2>
+        <p className="text-[15px] leading-[1.65] text-gray-600">
           {spot.description || "상세 소개 정보가 없습니다."}
         </p>
       </section>
+
+      </div>{/* 본문 카드 닫기 */}
+
+      {/* 하단 고정 CTA */}
+      <div className="fixed bottom-20 left-1/2 -translate-x-1/2 w-full max-w-md px-4 z-40 pointer-events-none">
+        <button
+          type="button"
+          onClick={() => navigate('/alternatives', { state: { area_cd: id } })}
+          className={`pointer-events-auto w-full flex items-center justify-between px-5 h-14 rounded-2xl text-white text-[14px] font-bold active:scale-[0.98] transition-all ${
+            info.text === '혼잡' || info.text === 'Crowded'
+              ? 'bg-red-500 shadow-[0_8px_24px_rgba(239,68,68,0.4)]'
+              : info.text === '보통' || info.text === 'Normal'
+              ? 'bg-orange-500 shadow-[0_8px_24px_rgba(249,115,22,0.4)]'
+              : 'bg-emerald-500 shadow-[0_8px_24px_rgba(16,185,129,0.4)]'
+          }`}
+        >
+          <div className="flex flex-col items-start">
+            <span className="text-[11px] font-medium opacity-75 mb-0.5">
+              {info.text === '혼잡' || info.text === 'Crowded'
+                ? (lang === 'en' ? 'It\'s pretty crowded here' : '여기 지금 복잡해요')
+                : info.text === '보통' || info.text === 'Normal'
+                ? (lang === 'en' ? 'Getting a little busy' : '슬슬 사람이 많아지고 있어요')
+                : (lang === 'en' ? 'Quiet here, but options await' : '지금은 쾌적해요')}
+            </span>
+            <div className="flex items-center gap-1.5">
+              <Compass className="w-4 h-4 opacity-80" />
+              <span>{lang === 'en' ? 'See alternative spots' : '대안 관광지 보러가기'}</span>
+            </div>
+          </div>
+          <ChevronRight className="w-5 h-5 opacity-60 shrink-0" />
+        </button>
+      </div>
 
       <BottomNav />
 
