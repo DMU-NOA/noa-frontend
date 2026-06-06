@@ -3,16 +3,18 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft, MapPin, Users } from "lucide-react";
 import BottomNav from "../components/BottomNav";
 import apiClient from "../api/client";
+import { useLanguage } from "../contexts/LanguageContext";
 
 // 혼잡도 레벨에 따른 UI 정보 매핑
-const getCongestionInfo = (level) => {
-  if (!level || level === '데이터 없음') 
-    return { rate: '0%', text: '정보없음', color: 'text-gray-400', bar: 'bg-gray-400 w-[10%]' };
-  if (level.includes('혼잡') || level.includes('붐빔')) 
-    return { rate: '85%', text: '혼잡', color: 'text-red-500', bar: 'bg-red-500 w-[85%]' };
-  if (level.includes('보통')) 
-    return { rate: '50%', text: '보통', color: 'text-orange-500', bar: 'bg-orange-400 w-[50%]' };
-  return { rate: '20%', text: '여유', color: 'text-emerald-500', bar: 'bg-emerald-500 w-[20%]' };
+const getCongestionInfo = (level, lang) => {
+  const l = String(level ?? '').toLowerCase();
+  if (!l || l === '데이터 없음' || l === 'no data') 
+    return { rate: '0%', text: lang === 'en' ? 'No Data' : '정보없음', color: 'text-gray-400', bar: 'bg-gray-400 w-[10%]' };
+  if (l.includes('혼잡') || l.includes('붐빔') || l.includes('crowd')) 
+    return { rate: '85%', text: lang === 'en' ? 'Crowded' : '혼잡', color: 'text-red-500', bar: 'bg-red-500 w-[85%]' };
+  if (l.includes('보통') || l.includes('normal')) 
+    return { rate: '50%', text: lang === 'en' ? 'Normal' : '보통', color: 'text-orange-500', bar: 'bg-orange-400 w-[50%]' };
+  return { rate: '20%', text: lang === 'en' ? 'Relax' : '여유', color: 'text-emerald-500', bar: 'bg-emerald-500 w-[20%]' };
 };
 
 // 프로그레스 바 컴포넌트
@@ -25,8 +27,8 @@ function CrowdBar({ barClass }) {
 }
 
 // 개별 관광지 카드 컴포넌트
-function SpotCard({ spot, onClick }) {
-  const info = getCongestionInfo(spot.congestion_level);
+function SpotCard({ spot, onClick, lang }) {
+  const info = getCongestionInfo(spot.congestion_level, lang);
   
   return (
     <div
@@ -66,26 +68,27 @@ function SpotCard({ spot, onClick }) {
 export default function AlternativeSpots() { 
   const navigate = useNavigate();
   const location = useLocation();
-  
+  const { lang } = useLanguage();
   // ListDetail에서 넘겨준 area_cd 받기
   const originAreaCd = location.state?.area_cd;
 
   const [originSpot, setOriginSpot] = useState(null);
   const [alternatives, setAlternatives] = useState([]);
   const [loading, setLoading] = useState(true);
+  
 
-  useEffect(() => {
+useEffect(() => {
     if (!originAreaCd) return;
 
     const fetchAlternatives = async () => {
       try {
         setLoading(true);
-        // 1. 원본 장소 정보 (상단 배너용)
-        const originRes = await apiClient.get(`/api/spots/${originAreaCd}`);
+        // 💡 1. 원본 장소 정보 (lang 추가)
+        const originRes = await apiClient.get(`/api/spots/${originAreaCd}?lang=${lang}`);
         setOriginSpot(originRes.data);
 
-        // 2. 대안 장소 리스트
-        const altRes = await apiClient.get(`/api/spots/${originAreaCd}/alternatives`);
+        // 💡 2. 대안 장소 리스트 (lang 추가)
+        const altRes = await apiClient.get(`/api/spots/${originAreaCd}/alternatives?lang=${lang}`);
         setAlternatives(altRes.data);
       } catch (error) {
         console.error("대안 관광지 로드 실패:", error);
@@ -95,7 +98,7 @@ export default function AlternativeSpots() {
     };
 
     fetchAlternatives();
-  }, [originAreaCd]);
+  }, [originAreaCd, lang]); // 💡 의존성 배열에 lang 추가
 
   // 카드를 클릭했을 때 해당 장소의 상세 페이지로 이동
   const handleCardClick = (spot) => {
@@ -104,10 +107,10 @@ export default function AlternativeSpots() {
     navigate(`/spots/${spot.area_cd}`); 
   };
 
-  if (loading) return <div className="p-10 text-center text-gray-500">대안 관광지를 찾는 중...</div>;
-  if (!originSpot) return <div className="p-10 text-center text-gray-500">잘못된 접근입니다.</div>;
+  if (loading) return <div className="p-10 text-center text-gray-500">{lang === 'en' ? 'Finding alternative spots...' : '대안 관광지를 찾는 중...'}</div>;
+  if (!originSpot) return <div className="p-10 text-center text-gray-500">{lang === 'en' ? 'Invalid access.' : '잘못된 접근입니다.'}</div>;
 
-  const originInfo = getCongestionInfo(originSpot.congestion_level);
+  const originInfo = getCongestionInfo(originSpot?.congestion_level, lang);
 
   return (
     <div className="w-full min-h-full bg-[#F8FAFC] font-['Pretendard','Noto_Sans_KR',sans-serif] flex flex-col relative overflow-hidden">
@@ -119,7 +122,7 @@ export default function AlternativeSpots() {
         >
           <ArrowLeft className="w-5 h-5 text-gray-700" />
         </button>
-        <h1 className="text-[17px] font-bold text-gray-900">대안 관광지</h1>
+        <h1 className="text-[17px] font-bold text-gray-900">{lang === 'en' ? 'Alternative Spots' : '대안 관광지'}</h1>
       </header>
 
       {/* 💡 원본 관광지 혼잡 배너 (실제 데이터 반영) */}
@@ -127,10 +130,10 @@ export default function AlternativeSpots() {
         <div className={`border rounded-2xl px-4 py-3 flex items-center gap-2.5 ${originInfo.color.replace('text-', 'bg-').replace('500', '50')} ${originInfo.color.replace('text-', 'border-').replace('500', '100')}`}>
           <span className={`w-2 h-2 rounded-full shrink-0 animate-pulse ${originInfo.color.replace('text-', 'bg-')}`} />
           <span className={`text-sm font-bold ${originInfo.color}`}>{originSpot.name}</span>
-          <span className={`text-sm opacity-80 ${originInfo.color}`}>— 현재 {originInfo.text}</span>
+          <span className={`text-sm opacity-80 ${originInfo.color}`}>— {lang === 'en' ? 'Currently' : '현재'} {originInfo.text}</span>
         </div>
         <p className="text-xs text-gray-400 mt-2 px-1">
-          비슷한 테마의 덜 붐비는 관광지를 추천합니다
+          {lang === 'en' ? 'Recommending less crowded spots with a similar theme' : '비슷한 테마의 덜 붐비는 관광지를 추천합니다'}
         </p>
       </div>
 
@@ -138,11 +141,12 @@ export default function AlternativeSpots() {
       <main className="flex-1 overflow-y-auto px-5 py-4 pb-24 flex flex-col gap-3">
         {alternatives.length > 0 ? (
           alternatives.map((spot) => (
-            <SpotCard key={spot.area_cd} spot={spot} onClick={handleCardClick} />
+            // 💡 lang={lang} 추가!
+            <SpotCard key={spot.area_cd} spot={spot} onClick={handleCardClick} lang={lang} />
           ))
         ) : (
           <div className="text-center text-gray-500 mt-10 text-sm">
-            추천할 대안 관광지가 없습니다.
+            {lang === 'en' ? 'No alternative spots to recommend.' : '추천할 대안 관광지가 없습니다.'}
           </div>
         )}
       </main>

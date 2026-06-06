@@ -4,19 +4,21 @@ import { useNavigate } from "react-router-dom";
 import { Send, Bot, User, Sparkles, Loader2 } from "lucide-react";
 import BottomNav from "../components/BottomNav";
 import apiClient from "../api/client";
+import { useLanguage } from "../contexts/LanguageContext";
 
 export default function ChatPage() {
   const navigate = useNavigate();
+  const { lang } = useLanguage();
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef(null);
 
-  // 초기 인사말 세팅
+  const initMsg = lang === 'en' 
+    ? "Hello! I'm NOA, your personal travel assistant ✨\nTell me what kind of trip you want or where you are, and I'll find the perfect uncrowded spot for you!\n(e.g., Recommend a quiet indoor date spot for a rainy day)"
+    : "안녕하세요! NOA 맞춤형 쾌적 여행 비서입니다 ✨\n원하시는 여행지 스타일이나 현재 계신 곳을 말씀해 주시면, 안 붐비고 딱 맞는 곳을 찾아드릴게요!\n(예: 비 오는 날 갈만한 조용한 실내 데이트 코스 알려줘)";
+
   const [messages, setMessages] = useState([
-    {
-      role: "ai",
-      content: "안녕하세요! NOA 맞춤형 쾌적 여행 비서입니다 ✨\n원하시는 여행지 스타일이나 현재 계신 곳을 말씀해 주시면, 안 붐비고 딱 맞는 곳을 찾아드릴게요!\n(예: 비 오는 날 갈만한 조용한 실내 데이트 코스 알려줘)"
-    }
+    { role: "ai", content: initMsg }
   ]);
 
   // 메시지가 추가될 때마다 맨 아래로 자동 스크롤
@@ -36,20 +38,25 @@ export default function ChatPage() {
     setIsLoading(true);
 
     try {
-      const response = await apiClient.post("/api/chat/", { message: userMessage });
+      // 💡 요청 파라미터에 lang 추가
+      const res = await apiClient.post("/api/chat", { message: userMessage, lang });
       
-      // 💡 응답받은 AI 메시지에 spot 데이터(카드 UI용)도 함께 저장
-      setMessages(prev => [...prev, { 
-        role: "ai", 
-        content: response.data.reply,
-        spot: response.data.spot // 👈 AI가 골라준 장소 데이터
-      }]);
-    } catch (error) {
-      console.error("챗봇 API 통신 에러:", error);
-      setMessages(prev => [...prev, { 
-        role: "ai", 
-        content: "앗, 서버와 연결이 불안정해요 😭 잠시 후 다시 시도해 주세요." 
-      }]);
+      const replyData = res.data;
+      if (replyData.spot) {
+        setMessages((prev) => [
+          ...prev,
+          { role: "ai", content: replyData.reply, spot: replyData.spot },
+        ]);
+      } else {
+        setMessages((prev) => [...prev, { role: "ai", content: replyData.reply }]);
+      }
+    } catch (err) {
+      console.error("챗봇 에러:", err);
+      // 💡 에러 메시지 다국어 처리
+      setMessages((prev) => [
+        ...prev,
+        { role: "ai", content: lang === 'en' ? "An error occurred. Please try again." : "오류가 발생했습니다. 다시 시도해 주세요." },
+      ]);
     } finally {
       setIsLoading(false);
     }
@@ -143,7 +150,8 @@ export default function ChatPage() {
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="어떤 곳을 찾으시나요?"
+            // 💡 placeholder 다국어 처리
+            placeholder={lang === 'en' ? "Ask anything..." : "어떤 곳을 찾으시나요?"}
             className="flex-1 bg-transparent text-[14px] outline-none text-gray-800 placeholder:text-gray-400"
             disabled={isLoading}
           />
