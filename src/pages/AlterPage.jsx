@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { ArrowLeft, MapPin, Users } from "lucide-react";
+import { ArrowLeft, MapPin, Users, Loader2 } from "lucide-react";
 import BottomNav from "../components/BottomNav";
 import apiClient from "../api/client";
 import { useLanguage } from "../contexts/LanguageContext";
@@ -107,13 +107,18 @@ useEffect(() => {
     navigate(`/spots/${spot.area_cd}`); 
   };
 
-  if (loading) return <div className="p-10 text-center text-gray-500">{lang === 'en' ? 'Finding alternative spots...' : '대안 관광지를 찾는 중...'}</div>;
+  if (loading) return (
+    <div className="w-full min-h-screen bg-white flex flex-col items-center justify-center gap-4">
+      <Loader2 className="w-10 h-10 text-blue-500 animate-spin" />
+      <p className="text-[14px] font-medium text-gray-400">{lang === 'en' ? 'Loading...' : '불러오는 중...'}</p>
+    </div>
+  );
   if (!originSpot) return <div className="p-10 text-center text-gray-500">{lang === 'en' ? 'Invalid access.' : '잘못된 접근입니다.'}</div>;
 
   const originInfo = getCongestionInfo(originSpot?.congestion_level, lang);
 
   return (
-    <div className="w-full min-h-full bg-[#F8FAFC] font-['Pretendard','Noto_Sans_KR',sans-serif] flex flex-col relative overflow-hidden">
+    <div className="w-full min-h-full bg-[#F8FAFC] flex flex-col relative overflow-hidden">
       {/* 헤더 */}
       <header className="px-5 py-4 flex items-center gap-3 bg-white shadow-sm shrink-0">
         <button

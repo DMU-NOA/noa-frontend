@@ -146,7 +146,7 @@ export default function ListDetail() {
   if (isLoading) return (
     <div className="w-full min-h-screen bg-white flex flex-col items-center justify-center gap-4">
       <Loader2 className="w-10 h-10 text-blue-500 animate-spin" />
-      <p className="text-[14px] font-medium text-gray-400">{lang === 'en' ? 'Loading data...' : '데이터를 불러오는 중...'}</p>
+      <p className="text-[14px] font-medium text-gray-400">{lang === 'en' ? 'Loading...' : '불러오는 중...'}</p>
     </div>
   );
   if (!spot) return <div className="p-10 text-center text-gray-500 font-bold">{lang === 'en' ? 'Data not found 😭' : '잘못된 접근이거나 데이터를 찾을 수 없습니다 😭'}</div>;
