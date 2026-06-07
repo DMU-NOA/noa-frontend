@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Home, Map, User, Sparkles } from 'lucide-react';
+import { Home, Map, User, Bot } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext'; // 💡 언어 상태 가져오기
 
 export default function BottomNav() {
@@ -20,7 +20,7 @@ export default function BottomNav() {
   // 💡 라벨에 다국어(lang) 조건 적용
   const menus = [
     { id: 'home', icon: Home, label: lang === 'en' ? 'Home' : '홈', path: '/', activeColor: 'text-blue-500' },
-    { id: 'chat', icon: Sparkles, label: lang === 'en' ? 'AI Assistant' : 'AI 비서', path: '/chat', activeColor: 'text-blue-500' }, 
+    { id: 'chat', icon: Bot, label: lang === 'en' ? 'AI Assistant' : 'AI 비서', path: '/chat', activeColor: 'text-blue-500' },
     { id: 'map', icon: Map, label: lang === 'en' ? 'Map' : '지도', path: '/map', activeColor: 'text-blue-500' }, 
     { id: 'my', icon: User, label: lang === 'en' ? 'My' : '마이', path: '/mypage', activeColor: 'text-blue-500' },
   ];
@@ -46,9 +46,9 @@ export default function BottomNav() {
             }`}
           >
             <div className={`relative transition-transform duration-300 ${isActive ? 'scale-110' : 'scale-100'}`}>
-              <Icon 
-                className="w-6 h-6 transition-colors duration-300" 
-                strokeWidth={isActive ? 2.5 : 2} 
+              <Icon
+                className="w-6 h-6 transition-colors duration-300"
+                strokeWidth={isActive ? 2.5 : 2}
               />
               {isActive && (
                 <span className={`absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full ${menu.activeColor.replace('text-', 'bg-')} animate-in zoom-in`} />
