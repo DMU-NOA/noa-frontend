@@ -49,13 +49,17 @@ export default function ListDetail() {
   const weatherScroll = useDragScroll();
 
   useEffect(() => {
+    let isMounted = true;
+
     const fetchData = async () => {
       setIsLoading(true);
       try {
         // 1. 관광지 기본 정보 로드
         const spotRes = await apiClient.get(`/api/spots/${id}?lang=${lang}`);
+        if (isMounted) {
         setSpot(spotRes.data);
-        
+        setIsLoading(false);
+        }
         // 💡 2. 좋아요(찜) 상태 초기 확인 추가!
         try {
           const likesRes = await apiClient.get(`/api/likes?lang=${lang}`);
@@ -86,6 +90,7 @@ export default function ListDetail() {
       }
     };
     fetchData();
+    return () => { isMounted = false; };
   }, [id, lang]);
 
   // 좋아요 토글
