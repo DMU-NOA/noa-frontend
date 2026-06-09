@@ -17,12 +17,14 @@ export default function MapPage() {
   const [mapCenter, setMapCenter] = useState({ lat: 37.5665, lng: 126.9780 });
   const [keyword, setKeyword] = useState("");
   const [searchResults, setSearchResults] = useState([]);
-
+  const [myPos, setMyPos] = useState({ lat: 37.5665, lng: 126.9780 });
   const [likes, setLikes] = useState([]);
   const [showLikes, setShowLikes] = useState(false);
   const [dragY, setDragY] = useState(0);
   const dragStartY = useRef(null);
 
+  const mapRef = useRef(null);
+  
   useEffect(() => {
     const targetSpotId = location.state?.selectedSpot;
 
@@ -71,13 +73,17 @@ export default function MapPage() {
     setShowLikes(false);
   };
 
-  const handleLocateMe = () => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition((pos) => {
-        setMapCenter({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-      });
-    }
-  };
+const handleLocateMe = () => {
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition((pos) => {
+      const newPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      setMyPos(newPos);
+      setMapCenter(newPos);
+      // 👇 이 핵심 코드가 지워졌습니다. 부활시켜주세요!
+      mapRef.current?.panTo(new window.kakao.maps.LatLng(newPos.lat, newPos.lng));
+    });
+  }
+};
 
   const getCongestionColor = (level) => {
     const safeLevel = String(level ?? "").toLowerCase();
@@ -258,7 +264,7 @@ export default function MapPage() {
       )}
 
       {/* 카카오 맵 */}
-      <Map
+      <Map ref={mapRef}
         center={mapCenter}
         isPanto={true}
         onDragEnd={(map) => setMapCenter({ lat: map.getCenter().getLat(), lng: map.getCenter().getLng() })}
@@ -266,7 +272,7 @@ export default function MapPage() {
         level={7}
         onClick={() => { setSelectedSpot(null); }}
       >
-
+      <MapMarker position={myPos} />
         {spots.map((spot) => {
           const isSelected = selectedSpot?.area_cd === spot.area_cd;
           const spotColor = getCongestionColor(spot.congestion_level);
