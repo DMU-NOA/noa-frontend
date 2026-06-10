@@ -79,26 +79,33 @@ export default function AlternativeSpots() {
 
 useEffect(() => {
     if (!originAreaCd) return;
+    let isMounted = true; // 컴포넌트 언마운트 방어용
 
     const fetchAlternatives = async () => {
       try {
         setLoading(true);
-        // 💡 1. 원본 장소 정보 (lang 추가)
-        const originRes = await apiClient.get(`/api/spots/${originAreaCd}?lang=${lang}`);
-        setOriginSpot(originRes.data);
 
-        // 💡 2. 대안 장소 리스트 (lang 추가)
-        const altRes = await apiClient.get(`/api/spots/${originAreaCd}/alternatives?lang=${lang}`);
-        setAlternatives(altRes.data);
+        // 💡 2개의 API를 순차적이 아닌 '병렬(동시)'로 한 번에 호출합니다!
+        const [originRes, altRes] = await Promise.all([
+          apiClient.get(`/api/spots/${originAreaCd}?lang=${lang}`),
+          apiClient.get(`/api/spots/${originAreaCd}/alternatives?lang=${lang}`)
+        ]);
+
+        if (isMounted) {
+          setOriginSpot(originRes.data);
+          setAlternatives(altRes.data);
+        }
       } catch (error) {
         console.error("대안 관광지 로드 실패:", error);
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     };
 
     fetchAlternatives();
-  }, [originAreaCd, lang]); // 💡 의존성 배열에 lang 추가
+
+    return () => { isMounted = false; };
+  }, [originAreaCd, lang]);
 
   // 카드를 클릭했을 때 해당 장소의 상세 페이지로 이동
   const handleCardClick = (spot) => {
