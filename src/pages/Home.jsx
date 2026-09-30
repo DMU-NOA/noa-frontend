@@ -128,7 +128,7 @@ export default function Home() {
     // 좋아요 목록 로드
     apiClient
       .get("/api/likes")
-      .then((res) => setLikedSet(new Set(res.data.map((l) => l.area_cd))))
+      .then((res) => setLikedSet(new Set(res.data.map((l) => l.spot_id))))
       .catch(() => {});
   }, [lang]);
 
@@ -137,24 +137,28 @@ export default function Home() {
     setTimeout(() => setToast(false), 2500);
   };
 
-  const handleLike = async (e, area_cd) => {
+  const handleLike = async (e, spot) => {
     e.stopPropagation();
     if (!isLoggedIn()) {
       showToast();
       return;
     }
-    const isLiked = likedSet.has(area_cd);
+    const isLiked = likedSet.has(spot.spot_id);
     try {
       if (isLiked) {
-        await apiClient.delete(`/api/likes/${area_cd}`);
+        await apiClient.delete(`/api/likes/${spot.spot_id}`);
         setLikedSet((prev) => {
           const s = new Set(prev);
-          s.delete(area_cd);
+          s.delete(spot.spot_id);
           return s;
         });
       } else {
-        await apiClient.post("/api/likes", { area_cd });
-        setLikedSet((prev) => new Set(prev).add(area_cd));
+        await apiClient.post("/api/likes", {
+          spot_id: spot.spot_id,
+          area_cd: spot.area_cd || null,
+          content_id: spot.content_id
+        });
+        setLikedSet((prev) => new Set(prev).add(spot.spot_id));
       }
     } catch (err) {
       console.error("좋아요 실패:", err);
@@ -271,8 +275,8 @@ export default function Home() {
               const status = getCongestionStyle(spot.congestion_level);
               return (
                 <div
-                  key={spot.area_cd}
-                  onClick={() => navigate(`/spots/${spot.area_cd}`)}
+                  key={spot.spot_id}
+                  onClick={() => navigate(`/spots/${spot.spot_id}`)}
                   className="group cursor-pointer relative w-full h-[220px] rounded-2xl overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.1)] active:scale-[0.985] transition-transform duration-150"
                 >
                   {/* 풀블리드 이미지 or 폴백 배경 */}
@@ -293,14 +297,30 @@ export default function Home() {
 
                   {/* 상단 — 혼잡도 배지 + 좋아요 */}
                   <div className="absolute top-3 left-3 right-3 flex items-center justify-between">
-                    <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold backdrop-blur-sm ${status.bg} ${status.text}`}>
-                      {status.label}
-                    </span>
+                    <div className="flex flex-col items-start gap-1">
+  <span
+    className={`px-2.5 py-1 rounded-full text-[11px] font-bold backdrop-blur-sm ${status.bg} ${status.text}`}
+  >
+    {status.label}
+  </span>
+
+  <span className="px-2 py-0.5 rounded-full text-[9px] font-semibold bg-black/35 text-white backdrop-blur-sm">
+    {spot.congestion_source === 'predicted'
+      ? (lang === 'en' ? 'AI Prediction' : 'AI 예측')
+      : (lang === 'en' ? 'Live' : '실시간')}
+  </span>
+</div>
                     <button
-                      onClick={(e) => handleLike(e, spot.area_cd)}
+                      onClick={(e) => handleLike(e, spot)}
                       className="w-8 h-8 bg-black/25 backdrop-blur-sm rounded-full flex items-center justify-center active:scale-90 transition-transform"
                     >
-                      <Heart className={`w-3.5 h-3.5 ${likedSet.has(spot.area_cd) ? 'fill-red-400 text-red-400' : 'text-white'}`} />
+                      <Heart
+                        className={`w-3.5 h-3.5 ${
+                          likedSet.has(spot.spot_id)
+                            ? 'fill-red-400 text-red-400'
+                            : 'text-white'
+                        }`}
+                      />
                     </button>
                   </div>
 
@@ -326,7 +346,7 @@ export default function Home() {
               {recommendations.map((rec) => (
                 <div
                   key={rec.area_cd}
-                  onClick={() => navigate(`/spots/${rec.area_cd}`)}
+                  onClick={() => navigate(`/spots/${rec.spot_id}`)}
                   className="shrink-0 w-36 cursor-pointer active:scale-95 transition-transform"
                 >
                   <img src={rec.image_url} alt={rec.name} className="w-36 h-36 rounded-2xl object-cover bg-gray-100" />

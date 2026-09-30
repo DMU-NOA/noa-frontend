@@ -47,7 +47,9 @@ export default function MapPage() {
 
   useEffect(() => {
     if (spots.length > 0 && location.state?.selectedSpot) {
-      const targetSpot = spots.find(s => s.area_cd === location.state.selectedSpot);
+      const targetSpot = spots.find(
+  s => s.spot_id === location.state.selectedSpot
+);
       if (targetSpot) {
         setMapCenter({ lat: parseFloat(targetSpot.mapy), lng: parseFloat(targetSpot.mapx) });
         setSelectedSpot(targetSpot);
@@ -124,19 +126,27 @@ const handleLocateMe = () => {
 
   const toggleLike = async (e, spot) => {
     e.stopPropagation();
-    const isLiked = likes.some(l => l.area_cd === spot.area_cd);
+    const isLiked = likes.some(l => l.spot_id === spot.spot_id);
 
     try {
       if (isLiked) {
-        await apiClient.delete(`/api/likes/${spot.area_cd}`);
-        setLikes(prev => prev.filter(l => l.area_cd !== spot.area_cd));
+        await apiClient.delete(`/api/likes/${spot.spot_id}`);
+        setLikes(prev => prev.filter(l => l.spot_id !== spot.spot_id));
       } else {
-        await apiClient.post("/api/likes", { area_cd: spot.area_cd });
+        await apiClient.post("/api/likes", {
+          spot_id: spot.spot_id,
+          area_cd: spot.area_cd || null,
+          content_id: spot.content_id
+        });
         setLikes(prev => [{
+            spot_id: spot.spot_id,
             area_cd: spot.area_cd,
+            content_id: spot.content_id,
             name: spot.name,
             address: spot.address,
-            congestion_level: spot.congestion_level
+            image_url: spot.image_url,
+            congestion_level: spot.congestion_level,
+            congestion_source: spot.congestion_source
         }, ...prev]);
       }
     } catch (err) {
@@ -161,7 +171,7 @@ const handleLocateMe = () => {
           <div className="bg-white mt-2 rounded-xl shadow-lg max-h-60 overflow-y-auto">
             {searchResults.map(s => (
               <div
-                key={s.area_cd}
+                key={s.spot_id}
                 className="p-3 border-b text-sm cursor-pointer hover:bg-gray-50"
                 onClick={() => handleSpotSelect(s)}
               >
@@ -221,11 +231,11 @@ const handleLocateMe = () => {
             <div className="overflow-y-auto pb-10 flex-1">
               {likes.length > 0 ? (
                 likes.map((spot, i) => {
-                  const mapSpot = spots.find(s => s.area_cd === spot.area_cd) || spot;
+                  const mapSpot = spots.find(s => s.spot_id === spot.spot_id) || spot;
                   const spotColor = getCongestionColor(spot.congestion_level);
                   return (
                     <button
-                      key={spot.area_cd}
+                      key={spot.spot_id}
                       onClick={() => handleSpotSelect(mapSpot)}
                       className={`w-full flex items-center gap-3.5 px-5 py-3.5 active:bg-gray-50 transition-colors ${i !== 0 ? 'border-t border-gray-50' : ''}`}
                     >
@@ -274,12 +284,13 @@ const handleLocateMe = () => {
       >
       <MapMarker position={myPos} />
         {spots.map((spot) => {
-          const isSelected = selectedSpot?.area_cd === spot.area_cd;
+          const isSelected =
+  selectedSpot?.spot_id === spot.spot_id;
           const spotColor = getCongestionColor(spot.congestion_level);
-          const isLiked = likes.some(l => l.area_cd === spot.area_cd);
+          const isLiked = likes.some(l => l.spot_id === spot.spot_id);
 
           return (
-            <div key={spot.area_cd}>
+            <div key={spot.spot_id}>
               <CustomOverlayMap position={{ lat: parseFloat(spot.mapy), lng: parseFloat(spot.mapx) }} zIndex={1}>
                 <div
                   onClick={() => handleSpotSelect(spot)}
@@ -322,7 +333,7 @@ const handleLocateMe = () => {
                     </div>
 
                     <button
-                      onClick={() => navigate(`/spots/${spot.area_cd}`)}
+                      onClick={() => navigate(`/spots/${spot.spot_id}`)}
                       className="w-full bg-blue-600 text-white text-xs font-bold py-2 rounded-xl active:scale-95 transition-transform"
                     >
                       {lang === 'en' ? 'View Details' : '상세 정보 보기'}

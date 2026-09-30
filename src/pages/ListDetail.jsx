@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, MapPin, User, CloudSun, Car, CalendarDays, X, Loader2, Sparkles, Heart, Compass } from 'lucide-react';
+import { ChevronLeft, ChevronRight, MapPin, User, CloudSun, Car, CalendarDays, X, Loader2, Heart, Compass } from 'lucide-react';
 import BottomNav from '../components/BottomNav';
 import apiClient from '../api/client';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -40,7 +40,7 @@ export default function ListDetail() {
   const [spot, setSpot] = useState(null);
   const [forecast, setForecast] = useState([]);
   const [addInfo, setAddInfo] = useState(null);
-  const [alternatives, setAlternatives] = useState([]);
+  const [, setAlternatives] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeModal, setActiveModal] = useState(null);
   const [loadingAddInfo, setLoadingAddInfo] = useState(false);
@@ -52,60 +52,164 @@ export default function ListDetail() {
     let isMounted = true;
 
     const fetchData = async () => {
-      setIsLoading(true);
+  setIsLoading(true);
+
+  try {
+    // 1. 관광지 기본 정보
+    const spotRes = await apiClient.get(
+      `/api/spots/${id}?lang=${lang}`
+    );
+
+    const currentSpot = spotRes.data;
+
+    if (!isMounted) return;
+
+    setSpot(currentSpot);
+
+    // 2. 좋아요 상태 - actual / predicted 공통
+    try {
+      const likesRes = await apiClient.get(
+        `/api/likes?lang=${lang}`
+      );
+
+      const isAlreadyLiked = likesRes.data.some(
+        (item) => item.spot_id === currentSpot.spot_id
+      );
+
+      setLiked(isAlreadyLiked);
+    } catch (likeErr) {
+      console.error(
+        '좋아요 상태 확인 실패:',
+        likeErr
+      );
+
+      setLiked(false);
+    }
+
+    // ============================================
+    // actual 장소만 서울시 실시간 API 사용
+    // ============================================
+    if (currentSpot.area_cd) {
+
+      // 3. 시간대별 혼잡도 예보
       try {
-        // 1. 관광지 기본 정보 로드
-        const spotRes = await apiClient.get(`/api/spots/${id}?lang=${lang}`);
-        if (isMounted) {
-        setSpot(spotRes.data);
-        setIsLoading(false);
-        }
-        // 💡 2. 좋아요(찜) 상태 초기 확인 추가!
-        try {
-          const likesRes = await apiClient.get(`/api/likes?lang=${lang}`);
-          // 내 찜 목록(likesRes.data) 중에 현재 관광지 id(area_cd)가 있는지 확인
-          const isAlreadyLiked = likesRes.data.some((item) => item.area_cd === id);
-          setLiked(isAlreadyLiked); // 있으면 true(빨간 하트), 없으면 false(빈 하트)
-        } catch (likeErr) {
-          console.error('좋아요 상태 확인 실패:', likeErr);
-        }
+        const forecastRes = await apiClient.get(
+          `/api/spots/${currentSpot.area_cd}/forecast?lang=${lang}`
+        );
 
-        // 3. 혼잡도 예측 데이터 로드
-        const forecastRes = await apiClient.get(`/api/spots/${id}/forecast?lang=${lang}`);
-        setForecast(forecastRes.data.forecast);
-        
-        // 4. 날씨/교통 등 부가정보 로드
-        const infoRes = await apiClient.get(`/api/spots/${id}/additional-info?lang=${lang}`);
-        setAddInfo(infoRes.data);
+        setForecast(
+          forecastRes.data.forecast || []
+        );
+      } catch (forecastErr) {
+        console.error(
+          '혼잡도 예보 로드 실패:',
+          forecastErr
+        );
 
-        // 5. 대안 장소 미리보기
-        try {
-          const altRes = await apiClient.get(`/api/spots/${id}/alternatives?lang=${lang}`);
-          setAlternatives(altRes.data.alternatives?.slice(0, 3) || []);
-        } catch { /* 대안 없어도 무관 */ }
-      } catch (err) {
-        console.error('데이터 로드 실패:', err);
-      } finally {
-        setIsLoading(false);
+        setForecast([]);
       }
-    };
-    fetchData();
-    return () => { isMounted = false; };
+
+      // 4. 날씨 / 교통 / 행사
+      try {
+        const infoRes = await apiClient.get(
+          `/api/spots/${currentSpot.area_cd}/additional-info?lang=${lang}`
+        );
+
+        setAddInfo(infoRes.data);
+      } catch (infoErr) {
+        console.error(
+          '부가정보 로드 실패:',
+          infoErr
+        );
+
+        setAddInfo(null);
+      }
+
+    } else {
+      // ============================================
+      // predicted 장소
+      // TourAPI 장소이므로 서울시 API 호출 X
+      // ============================================
+
+      setForecast([]);
+      setAddInfo(null);
+    }
+
+    // 5. 대안 관광지 - actual / predicted 공통
+    try {
+      const altRes = await apiClient.get(
+        `/api/spots/${currentSpot.spot_id}/alternatives?lang=${lang}`
+      );
+
+      const altData = Array.isArray(altRes.data)
+        ? altRes.data
+        : altRes.data.alternatives || [];
+
+      setAlternatives(
+        altData.slice(0, 3)
+      );
+
+    } catch (altErr) {
+      console.error(
+        '대안 관광지 로드 실패:',
+        altErr
+      );
+
+      setAlternatives([]);
+    }
+
+  } catch (err) {
+    console.error(
+      '데이터 로드 실패:',
+      err
+    );
+
+  } finally {
+    if (isMounted) {
+      setIsLoading(false);
+    }
+  }
+};
+
+  fetchData();
+
+  return () => {
+    isMounted = false;
+  };
+
   }, [id, lang]);
 
   // 좋아요 토글
-  const handleLike = async () => {
-    try {
-      if (liked) {
-        await apiClient.delete(`/api/likes/${id}`);
-      } else {
-        await apiClient.post('/api/likes', { area_cd: id });
-      }
-      setLiked(!liked);
-    } catch (error) {
-      console.error("좋아요 처리 실패:", error);
+const handleLike = async () => {
+  if (!spot?.spot_id || !spot?.content_id) {
+    return;
+  }
+
+  try {
+    if (liked) {
+      await apiClient.delete(
+        `/api/likes/${spot.spot_id}`
+      );
+    } else {
+      await apiClient.post(
+        '/api/likes',
+        {
+          spot_id: spot.spot_id,
+          area_cd: spot.area_cd || null,
+          content_id: spot.content_id
+        }
+      );
     }
-  };
+
+    setLiked((prev) => !prev);
+
+  } catch (error) {
+    console.error(
+      "좋아요 처리 실패:",
+      error
+    );
+  }
+};
 
   const handleOpenModal = async (type) => {
     setActiveModal(type); 
@@ -176,16 +280,30 @@ export default function ListDetail() {
           <button type="button" onClick={() => navigate(-1)} className="w-9 h-9 bg-black/25 backdrop-blur-sm rounded-full flex items-center justify-center active:scale-90 transition-transform">
             <ChevronLeft className="w-5 h-5 text-white" />
           </button>
-          <button type="button" onClick={handleLike} className="w-9 h-9 bg-black/25 backdrop-blur-sm rounded-full flex items-center justify-center active:scale-90 transition-transform">
-            <Heart className={`w-4.5 h-4.5 transition-colors ${liked ? 'fill-red-400 text-red-400' : 'text-white'}`} />
-          </button>
+  <button
+    type="button"
+    onClick={handleLike}
+    className="w-9 h-9 bg-black/25 backdrop-blur-sm rounded-full flex items-center justify-center active:scale-90 transition-transform"
+  >
+    <Heart
+      className={`w-4.5 h-4.5 transition-colors ${
+        liked
+          ? 'fill-red-400 text-red-400'
+          : 'text-white'
+      }`}
+    />
+  </button>
         </div>
 
         {/* 하단 장소명 + 주소 */}
         <div className="absolute bottom-0 left-0 right-0 px-5 pb-5">
           <h1 className="text-[22px] font-bold text-white mb-1">{spot.name}</h1>
           <button
-            onClick={() => navigate('/map', { state: { selectedSpot: spot.area_cd }})}
+            onClick={() => navigate('/map', {
+  state: {
+    selectedSpot: spot.spot_id
+  }
+})}
             className="flex items-center gap-1.5 active:opacity-70 transition-opacity"
           >
             <MapPin className="w-3.5 h-3.5 text-white/70 shrink-0" />
@@ -198,7 +316,23 @@ export default function ListDetail() {
 
       {/* 💡 2. 혼잡도 섹션 */}
       <section className="px-5 pt-8 pb-8">
-        <h2 className="text-lg font-bold text-gray-900 mb-6">{lang === 'en' ? 'Current Congestion' : '현재 예상 혼잡도'}</h2>
+        <div className="flex items-center justify-between mb-6">
+  <h2 className="text-lg font-bold text-gray-900">
+    {lang === 'en'
+      ? 'Current Congestion'
+      : '현재 예상 혼잡도'}
+  </h2>
+
+  <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-gray-100 text-gray-500">
+    {spot.congestion_source === 'predicted'
+      ? (lang === 'en'
+          ? 'AI Prediction'
+          : 'AI 예측')
+      : (lang === 'en'
+          ? 'Live'
+          : '실시간')}
+  </span>
+</div>
         <div className="mb-6">
           <div className="h-3 rounded-full bg-gray-100 overflow-hidden mb-2">
             <div
@@ -281,7 +415,11 @@ export default function ListDetail() {
         <h2 className="text-lg font-bold text-gray-900 mb-4">{lang === 'en' ? 'Spot Info' : '관광지 정보'}</h2>
         <div className="flex flex-col gap-4 text-gray-600 text-sm mb-10 bg-gray-50 p-5 rounded-2xl border border-gray-100">
           <button 
-            onClick={() => navigate('/map', { state: { selectedSpot: spot.area_cd }})}
+            onClick={() => navigate('/map', {
+  state: {
+    selectedSpot: spot.spot_id
+  }
+})}
             className="flex items-center gap-3 w-full text-left group active:opacity-50 transition-opacity"
           >
             <MapPin className="w-5 h-5 text-gray-400 shrink-0 group-hover:text-blue-500 transition-colors" />
@@ -305,37 +443,62 @@ export default function ListDetail() {
 
       </div>{/* 본문 카드 닫기 */}
 
-      {/* 하단 고정 CTA */}
-      <div className="fixed bottom-20 left-1/2 -translate-x-1/2 w-full max-w-md px-4 z-40 pointer-events-none">
-        <button
-          type="button"
-          onClick={() => navigate('/alternatives', { state: { area_cd: id } })}
-          className={`pointer-events-auto w-full flex items-center justify-between px-5 h-14 rounded-2xl text-white text-[14px] font-bold active:scale-[0.98] transition-all ${
-            info.text === '혼잡' || info.text === 'Crowded'
-              ? 'bg-red-500 shadow-[0_8px_24px_rgba(239,68,68,0.4)]'
-              : info.text === '보통' || info.text === 'Normal'
-              ? 'bg-orange-500 shadow-[0_8px_24px_rgba(249,115,22,0.4)]'
-              : 'bg-emerald-500 shadow-[0_8px_24px_rgba(16,185,129,0.4)]'
-          }`}
-        >
-          <div className="flex flex-col items-start">
-            <span className="text-[11px] font-medium opacity-75 mb-0.5">
-              {info.text === '혼잡' || info.text === 'Crowded'
-                ? (lang === 'en' ? 'It\'s pretty crowded here' : '여기 지금 복잡해요')
-                : info.text === '보통' || info.text === 'Normal'
-                ? (lang === 'en' ? 'Getting a little busy' : '슬슬 사람이 많아지고 있어요')
-                : (lang === 'en' ? 'Quiet here, but options await' : '지금은 쾌적해요')}
-            </span>
-            <div className="flex items-center gap-1.5">
-              <Compass className="w-4 h-4 opacity-80" />
-              <span>{lang === 'en' ? 'See alternative spots' : '대안 관광지 보러가기'}</span>
-            </div>
-          </div>
-          <ChevronRight className="w-5 h-5 opacity-60 shrink-0" />
-        </button>
+      {/* 하단 고정 CTA - actual / predicted 공통 */}
+  <div className="fixed bottom-20 left-1/2 -translate-x-1/2 w-full max-w-md px-4 z-40 pointer-events-none">
+    <button
+      type="button"
+      onClick={() =>
+        navigate('/alternatives', {
+          state: {
+            spot_id: spot.spot_id,
+            area_cd: spot.area_cd
+          }
+        })
+      }
+      className={`pointer-events-auto w-full flex items-center justify-between px-5 h-14 rounded-2xl text-white text-[14px] font-bold active:scale-[0.98] transition-all ${
+        info.text === '혼잡' || info.text === 'Crowded'
+          ? 'bg-red-500 shadow-[0_8px_24px_rgba(239,68,68,0.4)]'
+          : info.text === '보통' || info.text === 'Normal'
+          ? 'bg-orange-500 shadow-[0_8px_24px_rgba(249,115,22,0.4)]'
+          : 'bg-emerald-500 shadow-[0_8px_24px_rgba(16,185,129,0.4)]'
+      }`}
+    >
+      <div className="flex flex-col items-start">
+        <span className="text-[11px] font-medium opacity-75 mb-0.5">
+          {info.text === '혼잡' || info.text === 'Crowded'
+            ? (
+              lang === 'en'
+                ? "It's pretty crowded here"
+                : '여기 지금 복잡해요'
+            )
+            : info.text === '보통' || info.text === 'Normal'
+            ? (
+              lang === 'en'
+                ? 'Getting a little busy'
+                : '슬슬 사람이 많아지고 있어요'
+            )
+            : (
+              lang === 'en'
+                ? 'Quiet here, but options await'
+                : '지금은 쾌적해요'
+            )}
+        </span>
+
+        <div className="flex items-center gap-1.5">
+          <Compass className="w-4 h-4 opacity-80" />
+          <span>
+            {lang === 'en'
+              ? 'See alternative spots'
+              : '대안 관광지 보러가기'}
+          </span>
+        </div>
       </div>
 
-      <BottomNav />
+      <ChevronRight className="w-5 h-5 opacity-60 shrink-0" />
+    </button>
+  </div>
+
+<BottomNav />
 
       {/* 부가정보 모달창 영역 (이전과 동일하게 유지) */}
       {activeModal && (
