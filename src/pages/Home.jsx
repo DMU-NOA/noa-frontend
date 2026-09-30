@@ -12,6 +12,7 @@ import BottomNav from "../components/BottomNav";
 import apiClient from "../api/client";
 import { isLoggedIn } from "../api/auth";
 import { useLanguage } from "../contexts/LanguageContext"; // 💡 언어 전역 상태 가져오기
+import TravelBalanceGameModal from '../components/TravelBalanceGameModal';
 
 // 💡 [추가] 카테고리 필터 마우스 드래그 스크롤을 위한 커스텀 훅
 function useDragScroll() {
@@ -248,6 +249,11 @@ export default function Home() {
             </div>
           </div>
         )}
+      </div>
+
+      {/* 여행 취향 밸런스 게임 */}
+      <div className="px-4 pt-3">
+        <TravelBalanceGameModal />
       </div>
 
       {/* 리스트 */}
