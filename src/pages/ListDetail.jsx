@@ -610,7 +610,11 @@ const handleLike = async () => {
                             ? (lang === 'en' ? 'Nearby observed area (reference, not street-level)' : '인근 서울시 관측 지역의 참고값 · 관광지 앞 도로 실측 아님')
                             : (lang === 'en' ? 'Seoul CityData mapped area' : '서울시 실측 지역 기준')}
                           {addInfo.traffic.source_area_name && ` · ${addInfo.traffic.source_area_name}`}
-                          {addInfo.traffic.nearby && Number.isFinite(addInfo.traffic.distance_m) && ` · ${addInfo.traffic.distance_m}m to area boundary`}
+                          {addInfo.traffic.nearby && Number.isFinite(addInfo.traffic.distance_m) && (
+                            lang === 'en'
+                              ? ` · ${addInfo.traffic.distance_m}m to observation area boundary`
+                              : ` · 관측 지역 경계까지 ${addInfo.traffic.distance_m}m`
+                          )}
                         </p>
                         {addInfo.traffic.msg && <p className="text-sm text-emerald-800 mt-2">{addInfo.traffic.msg}</p>}
                         {addInfo.traffic.observed_at && (
