@@ -53,6 +53,8 @@ export default function ListDetail() {
 
     const fetchData = async () => {
   setIsLoading(true);
+  setAddInfo(null);
+  setForecast([]);
 
   try {
     // 1. 관광지 기본 정보
@@ -109,22 +111,6 @@ export default function ListDetail() {
         setForecast([]);
       }
 
-      // 4. 날씨 / 교통 / 행사
-      try {
-        const infoRes = await apiClient.get(
-          `/api/spots/${currentSpot.area_cd}/additional-info?lang=${lang}`
-        );
-
-        setAddInfo(infoRes.data);
-      } catch (infoErr) {
-        console.error(
-          '부가정보 로드 실패:',
-          infoErr
-        );
-
-        setAddInfo(null);
-      }
-
     } else {
       // ============================================
       // predicted 장소
@@ -132,7 +118,17 @@ export default function ListDetail() {
       // ============================================
 
       setForecast([]);
-      setAddInfo(null);
+    }
+
+    // 4. 모든 관광지 공통: DB 인근 날씨 및 축제, 실측 지역 교통.
+    try {
+      const infoRes = await apiClient.get(
+        `/api/spots/${currentSpot.spot_id}/additional-info?lang=${lang}`
+      );
+      if (isMounted) setAddInfo(infoRes.data);
+    } catch (infoErr) {
+      console.error('부가정보 로드 실패:', infoErr);
+      if (isMounted) setAddInfo(null);
     }
 
     // 5. 대안 관광지 - actual / predicted 공통
@@ -523,43 +519,64 @@ const handleLike = async () => {
                     <h3 className="text-xl font-black text-gray-900 mb-6 flex items-center gap-2">
                       <CloudSun className="text-sky-500 w-6 h-6" /> {lang === 'en' ? 'Weather & Air' : '날씨 및 대기환경'}
                     </h3>
-                    <div className="flex flex-col gap-5 text-gray-700">
+                    {addInfo.weather ? (
+                      <>
+                        <p className="text-[11px] text-gray-500 mb-4">
+                          {addInfo.weather.nearby
+                            ? (lang === 'en' ? 'Nearby CityData observation' : '인근 서울시 지역 관측값')
+                            : (lang === 'en' ? 'CityData observation' : '서울시 도시데이터 관측값')}
+                          {Number.isFinite(addInfo.weather.distance_m) && ` · ${addInfo.weather.distance_m}m`}
+                          {addInfo.weather.observed_at && (
+                            <> · {new Date(addInfo.weather.observed_at).toLocaleString(lang === 'en' ? 'en-US' : 'ko-KR', { timeZone: 'Asia/Seoul', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })} {lang === 'en' ? 'observed' : '관측'}</>
+                          )}
+                        </p>
+                        <div className="flex flex-col gap-5 text-gray-700">
                       <div className="bg-linear-to-br from-sky-50 to-blue-50 p-5 rounded-3xl flex justify-between items-center shadow-sm">
                         <div className="flex flex-col">
                           <span className="text-sm font-bold text-sky-800 mb-1">{lang === 'en' ? 'Current Temp' : '현재 기온'}</span>
-                          <span className="text-3xl font-black text-sky-600">{addInfo.weather?.temp}℃</span>
+                          <span className="text-3xl font-black text-sky-600">{addInfo.weather.temp != null ? `${addInfo.weather.temp}℃` : '-'}</span>
                         </div>
                         <div className="text-right flex flex-col gap-1">
-                          <span className="text-sm font-semibold text-gray-600">{lang === 'en' ? 'Humidity' : '습도'}: {addInfo.weather?.humidity}%</span>
-                          <span className="text-sm font-semibold text-gray-600">{lang === 'en' ? 'Precipitation' : '강수'}: {addInfo.weather?.msg}</span>
+                          <span className="text-sm font-semibold text-gray-600">{lang === 'en' ? 'Humidity' : '습도'}: {addInfo.weather.humidity != null ? `${addInfo.weather.humidity}%` : '-'}</span>
+                          <span className="text-sm font-semibold text-gray-600">{lang === 'en' ? 'Precipitation' : '강수'}: {addInfo.weather.msg || (lang === 'en' ? 'Not provided' : '정보 없음')}</span>
                         </div>
                       </div>
 
                       <div>
-                        <h4 className="font-bold text-sm text-gray-800 mb-3">{lang === 'en' ? 'Hourly Weather' : '시간대별 날씨'}</h4>
+                        <h4 className="font-bold text-sm text-gray-800 mb-3">{lang === 'en' ? 'Hourly Weather' : '시간대별 날씨 예보'}</h4>
+                        {addInfo.weather.forecast24?.length > 0 ? (
                         <div ref={weatherScroll.ref} className={`flex gap-3 overflow-x-auto pb-2 ${weatherScroll.className}`} {...weatherScroll.events}>
-                          {addInfo.weather?.forecast24?.map((f, i) => (
+                          {addInfo.weather.forecast24.map((f, i) => (
                             <div key={i} className="flex flex-col items-center bg-gray-50 rounded-2xl p-3 min-w-16 shrink-0 pointer-events-none">
                               <span className="text-xs font-bold text-gray-500 mb-2">{f.time}</span>
-                              <span className="text-lg mb-1">{f.sky.includes('구름') ? '☁️' : f.sky.includes('비') ? '🌧️' : '☀️'}</span>
+                              <span className="text-lg mb-1">{f.sky?.includes('구름') ? '☁️' : f.sky?.includes('비') ? '🌧️' : f.sky === '맑음' || f.sky === 'Clear' ? '☀️' : '🌤️'}</span>
                               <span className="text-sm font-black text-gray-800">{f.temp}℃</span>
                               {f.rain_chance !== "0" && <span className="text-[10px] text-blue-500 font-bold mt-1">{f.rain_chance}%</span>}
                             </div>
                           ))}
                         </div>
+                        ) : <p className="text-xs text-gray-400">{lang === 'en' ? 'No recent forecast available.' : '현재 제공 가능한 시간대별 예보가 없습니다.'}</p>}
                       </div>
 
                       <div className="grid grid-cols-2 gap-3">
                         <div className="bg-gray-50 p-4 rounded-2xl">
                           <span className="block text-xs font-bold text-gray-500 mb-1">{lang === 'en' ? 'PM10' : '미세먼지 (PM10)'}</span>
-                          <div className="flex items-end gap-2"><span className="text-lg font-black text-gray-800">{addInfo.weather?.pm10}</span><span className="text-xs text-gray-400 mb-1">{addInfo.weather?.pm10_val}㎍/㎥</span></div>
+                          <div className="flex items-end gap-2"><span className="text-lg font-black text-gray-800">{addInfo.weather.pm10 || (lang === 'en' ? 'Unavailable' : '정보 없음')}</span><span className="text-xs text-gray-400 mb-1">{addInfo.weather.pm10_val != null ? `${addInfo.weather.pm10_val}㎍/㎥` : '-'}</span></div>
                         </div>
                         <div className="bg-gray-50 p-4 rounded-2xl">
                           <span className="block text-xs font-bold text-gray-500 mb-1">{lang === 'en' ? 'PM2.5' : '초미세먼지 (PM2.5)'}</span>
-                          <div className="flex items-end gap-2"><span className="text-lg font-black text-gray-800">{addInfo.weather?.pm25}</span><span className="text-xs text-gray-400 mb-1">{addInfo.weather?.pm25_val}㎍/㎥</span></div>
+                          <div className="flex items-end gap-2"><span className="text-lg font-black text-gray-800">{addInfo.weather.pm25 || (lang === 'en' ? 'Unavailable' : '정보 없음')}</span><span className="text-xs text-gray-400 mb-1">{addInfo.weather.pm25_val != null ? `${addInfo.weather.pm25_val}㎍/㎥` : '-'}</span></div>
                         </div>
                       </div>
-                    </div>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="bg-gray-50 rounded-2xl p-5 text-sm text-gray-500 text-center">
+                        {lang === 'en'
+                          ? 'No recent weather or air-quality observation is available for this spot.'
+                          : '이 여행지에 연결된 최근 3시간의 날씨·미세먼지 관측값이 없습니다.'}
+                      </div>
+                    )}
                   </div>
                 )}
 
