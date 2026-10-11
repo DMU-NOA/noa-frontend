@@ -582,20 +582,141 @@ const handleLike = async () => {
 
                 {activeModal === 'traffic' && (
                   <div className="flex-1 overflow-y-auto pr-2" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                    <h3 className="text-xl font-black text-gray-900 mb-6 flex items-center gap-2"><Car className="text-emerald-500 w-6 h-6" /> {lang === 'en' ? 'Traffic & Parking' : '교통 및 주차 현황'}</h3>
-                    <div className="bg-emerald-50 p-5 rounded-3xl mb-5">
-                      <div className="flex justify-between items-end mb-2"><span className="font-bold text-emerald-800">{lang === 'en' ? 'Avg Traffic Speed' : '주변 평균 차량 속도'}</span><span className="text-2xl font-black text-emerald-600">{addInfo.traffic?.speed} <span className="text-sm">km/h</span></span></div>
-                      <p className="text-sm font-semibold text-emerald-700 bg-white/60 p-2 rounded-xl mt-3">{addInfo.traffic?.msg}</p>
-                    </div>
-                    <h4 className="font-bold text-sm text-gray-800 mb-3">{lang === 'en' ? 'Nearby Parking Lots' : '인근 주차장 실시간 현황'}</h4>
-                    <div className="flex flex-col gap-3">
+                    <h3 className="text-xl font-black text-gray-900 mb-2 flex items-center gap-2">
+                      <Car className="text-emerald-500 w-6 h-6" />
+                      {lang === 'en' ? 'Traffic, Parking & Transit' : '교통·주차·대중교통'}
+                    </h3>
+                    <p className="text-xs text-gray-500 mb-5">
+                      {lang === 'en'
+                        ? 'Live road/parking: Seoul CityData · Transit ridership: historical monthly figures'
+                        : '도로·주차: 서울시 실시간 도시데이터 · 승하차: 과거 월별 집계'}
+                    </p>
+
+                    <h4 className="font-bold text-sm text-gray-800 mb-3">
+                      {lang === 'en' ? 'Road Conditions' : '도로 소통 현황'}
+                    </h4>
+                    {addInfo.traffic ? (
+                      <div className="bg-emerald-50 p-5 rounded-3xl mb-6">
+                        <div className="flex justify-between items-center gap-3">
+                          <span className="font-bold text-emerald-800 text-sm">
+                            {lang === 'en' ? 'Area Average Speed' : '지역 평균 차량 속도'}
+                          </span>
+                          <span className="text-xl font-black text-emerald-600">
+                            {addInfo.traffic.speed} <span className="text-xs">km/h</span>
+                          </span>
+                        </div>
+                        {addInfo.traffic.msg && <p className="text-sm text-emerald-800 mt-2">{addInfo.traffic.msg}</p>}
+                        {addInfo.traffic.observed_at && (
+                          <p className="text-[11px] text-emerald-700/80 mt-2">
+                            {new Date(addInfo.traffic.observed_at).toLocaleString(
+                              lang === 'en' ? 'en-US' : 'ko-KR',
+                              { timeZone: 'Asia/Seoul', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }
+                            )} {lang === 'en' ? 'observed' : '관측'}
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="bg-gray-50 rounded-xl p-4 text-xs text-gray-500 mb-6">
+                        {lang === 'en'
+                          ? 'Recent road traffic is not provided for this tourist spot.'
+                          : '이 관광지에는 최근 도로 소통 관측값이 제공되지 않습니다.'}
+                      </p>
+                    )}
+
+                    <h4 className="font-bold text-sm text-gray-800 mb-3">
+                      {lang === 'en' ? 'Nearby Parking (Live Availability)' : '인근 주차장 실시간 잔여 면수'}
+                    </h4>
+                    <p className="text-[11px] text-gray-500 mb-3">
+                      {lang === 'en'
+                        ? 'Up to 2 km away · Only timestamped live availability'
+                        : '반경 2km 이내 · 실시간 제공 및 갱신 시각이 확인된 주차장'}
+                    </p>
+                    <div className="flex flex-col gap-3 mb-7">
                       {addInfo.parking_lots?.length > 0 ? addInfo.parking_lots.map((p, idx) => (
-                          <div key={idx} className="bg-gray-50 p-4 rounded-2xl flex justify-between items-center border border-gray-100">
-                            <div className="flex flex-col gap-1 w-2/3"><strong className="text-sm text-gray-900 truncate">{p.name}</strong><span className="text-xs text-gray-500">{lang === 'en' ? 'Basic Fee: ' : '기본요금: '}{p.fee > 0 ? `${p.fee}${lang === 'en' ? 'KRW' : '원'}` : (lang === 'en' ? 'No info' : '정보없음')}</span></div>
-                            <div className="text-right"><span className="block text-xs text-gray-500 mb-0.5">{lang === 'en' ? 'Available / Total' : '빈자리 / 총면수'}</span><span className="text-lg font-black text-blue-600">{p.cur}</span><span className="text-sm font-bold text-gray-400"> / {p.max}</span></div>
+                        <div key={idx} className="bg-gray-50 rounded-2xl p-4">
+                          <div className="flex items-center justify-between gap-2">
+                            <strong className="text-sm text-gray-900">{p.name}</strong>
+                            <span className="text-xs text-gray-500 shrink-0">{(p.distance_m / 1000).toFixed(1)}km</span>
                           </div>
-                      )) : <p className="text-gray-500 text-sm text-center py-4 bg-gray-50 rounded-2xl">{lang === 'en' ? 'No parking data.' : '주변 공영/민영 주차장 데이터가 없습니다.'}</p>}
+                          <p className="text-sm font-bold text-blue-600 mt-2">
+                            {lang === 'en' ? 'Available / Capacity: ' : '주차 가능 / 총면수: '}
+                            {p.cur.toLocaleString()} / {p.max.toLocaleString()}
+                          </p>
+                          <p className="text-[11px] text-gray-500 mt-1">
+                            {p.fee != null ? (lang === 'en' ? `Base fee: ${p.fee.toLocaleString()} KRW` : `기본요금: ${p.fee.toLocaleString()}원`) : (lang === 'en' ? 'Fee unavailable' : '요금 정보 없음')}
+                            {p.observed_at && ` · ${new Date(p.observed_at).toLocaleString(
+                              lang === 'en' ? 'en-US' : 'ko-KR',
+                              { timeZone: 'Asia/Seoul', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }
+                            )}`}
+                          </p>
+                        </div>
+                      )) : (
+                        <p className="bg-gray-50 rounded-xl p-4 text-xs text-gray-500">
+                          {lang === 'en' ? 'No nearby parking has confirmed recent availability.' : '최근 잔여 면수가 확인된 인근 주차장 정보가 없습니다.'}
+                        </p>
+                      )}
                     </div>
+
+                    <h4 className="font-bold text-sm text-gray-800 mb-2">
+                      {lang === 'en' ? 'Nearby Subway Stations' : '인근 지하철역'}
+                    </h4>
+                    <p className="text-[11px] text-gray-500 mb-3">
+                      {lang === 'en' ? 'Within 1 km · Straight-line distance' : '반경 1km 이내 · 직선거리 기준'}
+                    </p>
+                    <div className="flex flex-col gap-2 mb-7">
+                      {addInfo.transit?.subway?.length > 0 ? addInfo.transit.subway.map((station, idx) => (
+                        <div key={idx} className="bg-sky-50 p-3 rounded-xl">
+                          <div className="flex justify-between gap-2">
+                            <strong className="text-sm text-gray-900">{station.name}</strong>
+                            <span className="text-xs text-gray-500 shrink-0">{station.distance_m}m</span>
+                          </div>
+                          {station.ridership?.month && (
+                            <p className="text-[11px] text-sky-800 mt-2">
+                              {station.ridership.month} · {station.ridership.hour}{lang === 'en' ? ':00 monthly total' : '시 시간대 월 누적'}
+                              {station.ridership.board_monthly != null && ` · ${lang === 'en' ? 'Board' : '승차'} ${station.ridership.board_monthly.toLocaleString()}`}
+                              {station.ridership.alight_monthly != null && ` · ${lang === 'en' ? 'Alight' : '하차'} ${station.ridership.alight_monthly.toLocaleString()}`}
+                            </p>
+                          )}
+                        </div>
+                      )) : (
+                        <p className="bg-gray-50 rounded-xl p-4 text-xs text-gray-500">
+                          {lang === 'en' ? 'No subway station found within 1 km.' : '1km 이내 연결된 지하철역이 없습니다.'}
+                        </p>
+                      )}
+                    </div>
+
+                    <h4 className="font-bold text-sm text-gray-800 mb-2">
+                      {lang === 'en' ? 'Nearby Bus Stops' : '인근 버스정류장'}
+                    </h4>
+                    <p className="text-[11px] text-gray-500 mb-3">
+                      {lang === 'en' ? 'Within 500 m · Straight-line distance' : '반경 500m 이내 · 직선거리 기준'}
+                    </p>
+                    <div className="flex flex-col gap-2 mb-3">
+                      {addInfo.transit?.bus?.length > 0 ? addInfo.transit.bus.map((stop, idx) => (
+                        <div key={idx} className="bg-amber-50 p-3 rounded-xl">
+                          <div className="flex justify-between gap-2">
+                            <strong className="text-sm text-gray-900">{stop.name}</strong>
+                            <span className="text-xs text-gray-500 shrink-0">{stop.distance_m}m</span>
+                          </div>
+                          {stop.ridership?.month && (
+                            <p className="text-[11px] text-amber-900 mt-2">
+                              {stop.ridership.month} · {stop.ridership.hour}{lang === 'en' ? ':00 monthly total' : '시 시간대 월 누적'}
+                              {stop.ridership.board_monthly != null && ` · ${lang === 'en' ? 'Board' : '승차'} ${stop.ridership.board_monthly.toLocaleString()}`}
+                              {stop.ridership.alight_monthly != null && ` · ${lang === 'en' ? 'Alight' : '하차'} ${stop.ridership.alight_monthly.toLocaleString()}`}
+                            </p>
+                          )}
+                        </div>
+                      )) : (
+                        <p className="bg-gray-50 rounded-xl p-4 text-xs text-gray-500">
+                          {lang === 'en' ? 'No bus stop found within 500 m.' : '500m 이내 연결된 버스정류장이 없습니다.'}
+                        </p>
+                      )}
+                    </div>
+                    <p className="text-[11px] leading-relaxed text-gray-500">
+                      {lang === 'en'
+                        ? 'Transit counts are monthly totals for the shown hour, not live arrival times or present crowding.'
+                        : '승하차 인원은 표시된 월의 해당 시간대 누적 통계이며, 실시간 도착이나 현재 혼잡도가 아닙니다.'}
+                    </p>
                   </div>
                 )}
 
