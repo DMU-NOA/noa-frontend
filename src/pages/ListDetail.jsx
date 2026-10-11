@@ -324,13 +324,13 @@ const handleLike = async () => {
   </h2>
 
   <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-gray-100 text-gray-500">
-    {spot.congestion_source === 'predicted'
-      ? (lang === 'en'
-          ? 'AI Prediction'
-          : 'AI 예측')
-      : (lang === 'en'
-          ? 'Live'
-          : '실시간')}
+    {spot.congestion_source === 'actual'
+      ? (lang === 'en' ? 'Observed' : '실측')
+      : spot.congestion_source === 'predicted'
+        ? spot.prediction_verified
+          ? (lang === 'en' ? 'ML Prediction' : 'ML 예측')
+          : (lang === 'en' ? 'Experimental estimate · not validated' : '시범 추정 · 미검증')
+        : (lang === 'en' ? 'Unavailable' : '미제공')}
   </span>
 </div>
         <div className="mb-6">

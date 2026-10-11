@@ -309,9 +309,13 @@ export default function Home() {
   </span>
 
   <span className="px-2 py-0.5 rounded-full text-[9px] font-semibold bg-black/35 text-white backdrop-blur-sm">
-    {spot.congestion_source === 'predicted'
-      ? (lang === 'en' ? 'AI Prediction' : 'AI 예측')
-      : (lang === 'en' ? 'Live' : '실시간')}
+    {spot.congestion_source === 'actual'
+      ? (lang === 'en' ? 'Observed' : '실측')
+      : spot.congestion_source === 'predicted'
+        ? spot.prediction_verified
+          ? (lang === 'en' ? 'ML Prediction' : 'ML 예측')
+          : (lang === 'en' ? 'Experimental estimate' : '시범 추정')
+        : (lang === 'en' ? 'Unavailable' : '미제공')}
   </span>
 </div>
                     <button
