@@ -240,7 +240,7 @@ const handleLocateMe = () => {
                       className={`w-full flex items-center gap-3.5 px-5 py-3.5 active:bg-gray-50 transition-colors ${i !== 0 ? 'border-t border-gray-50' : ''}`}
                     >
                       <div className="w-12 h-12 rounded-2xl overflow-hidden shrink-0 bg-gray-100">
-                        <img src={mapSpot.image_url || 'https://via.placeholder.com/300'} className="w-full h-full object-cover" />
+                        <img src={mapSpot.image_url || "/spot-placeholder.svg"} onError={(e) => { e.currentTarget.src = "/spot-placeholder.svg"; e.currentTarget.onerror = null; }} className="w-full h-full object-cover" />
                       </div>
                       <div className="flex-1 min-w-0 text-left">
                         <p className="text-[14px] font-bold text-gray-900 truncate">{spot.name}</p>
@@ -318,7 +318,7 @@ const handleLocateMe = () => {
                     </button>
 
                     <img
-                      src={spot.image_url || 'https://via.placeholder.com/300'}
+                      src={spot.image_url || "/spot-placeholder.svg"} onError={(e) => { e.currentTarget.src = "/spot-placeholder.svg"; e.currentTarget.onerror = null; }}
                       alt={spot.name}
                       className="w-full h-24 object-cover rounded-xl mb-3 bg-gray-100"
                     />

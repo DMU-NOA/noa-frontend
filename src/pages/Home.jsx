@@ -288,7 +288,7 @@ export default function Home() {
                   {/* 풀블리드 이미지 or 폴백 배경 */}
                   {spot.image_url ? (
                     <img
-                      src={spot.image_url}
+                      src={spot.image_url} onError={(e) => { e.currentTarget.src = "/spot-placeholder.svg"; e.currentTarget.onerror = null; }}
                       alt={spot.name}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                     />
@@ -355,7 +355,7 @@ export default function Home() {
                   onClick={() => navigate(`/spots/${rec.spot_id}`)}
                   className="shrink-0 w-36 cursor-pointer active:scale-95 transition-transform"
                 >
-                  <img src={rec.image_url} alt={rec.name} className="w-36 h-36 rounded-2xl object-cover bg-gray-100" />
+                  <img src={rec.image_url || "/spot-placeholder.svg"} onError={(e) => { e.currentTarget.src = "/spot-placeholder.svg"; e.currentTarget.onerror = null; }} alt={rec.name} className="w-36 h-36 rounded-2xl object-cover bg-gray-100" />
                   <div className="mt-2 px-0.5">
                     <h4 className="text-[13px] font-semibold text-gray-900 truncate">{rec.name}</h4>
                     <p className="text-[11px] text-gray-400 mt-0.5 truncate">{rec.address}</p>

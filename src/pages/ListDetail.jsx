@@ -268,7 +268,7 @@ const handleLike = async () => {
       {/* 히어로 이미지 + 오버레이 헤더 */}
       <div className="relative w-full h-[300px]">
         {spot.image_url ? (
-          <img src={spot.image_url} alt={spot.name} className="w-full h-full object-cover" />
+          <img src={spot.image_url} onError={(e) => { e.currentTarget.src = "/spot-placeholder.svg"; e.currentTarget.onerror = null; }} alt={spot.name} className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-gray-600 to-gray-800" />
         )}
