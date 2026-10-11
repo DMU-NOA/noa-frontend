@@ -584,13 +584,20 @@ const handleLike = async () => {
 
                 {activeModal === 'event' && (
                   <div className="flex-1 overflow-y-auto pr-2" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                    <h3 className="text-xl font-black text-gray-900 mb-6 flex items-center gap-2"><CalendarDays className="text-purple-500 w-6 h-6" /> {lang === 'en' ? 'Ongoing Events' : '진행 중인 행사'}</h3>
+                    <h3 className="text-xl font-black text-gray-900 mb-2 flex items-center gap-2"><CalendarDays className="text-purple-500 w-6 h-6" /> {lang === 'en' ? 'Nearby Festivals & Events' : '주변 축제·행사'}</h3>
+                    <p className="text-xs text-gray-500 mb-5">{lang === 'en' ? 'Within 3 km · Ongoing or starting within 30 days' : '반경 3km · 진행 중 또는 30일 내 시작 예정'}</p>
                     <div className="flex flex-col gap-3">
                       {addInfo.events?.length > 0 ? addInfo.events.map((ev, idx) => (
                           <div key={idx} className="bg-purple-50 p-4 rounded-2xl border border-purple-100">
-                            <strong className="block text-purple-900 mb-1">{ev.name}</strong>
+                            <div className="flex items-center gap-2 mb-1">
+                              <strong className="block text-purple-900 flex-1 min-w-0">{ev.name}</strong>
+                              <span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-bold ${ev.status === 'ongoing' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}>
+                                {ev.status === 'ongoing' ? (lang === 'en' ? 'Ongoing' : '진행 중') : (lang === 'en' ? 'Upcoming' : '예정')}
+                              </span>
+                            </div>
                             <span className="text-xs text-purple-600/80 font-semibold block mb-1">{ev.period}</span>
-                            <span className="text-xs text-purple-800 truncate bg-white/50 px-2 py-1 rounded-md mt-1">📍 {ev.place}</span>
+                            <span className="text-xs text-purple-800 bg-white/50 px-2 py-1 rounded-md mt-1">📍 {ev.place || (lang === 'en' ? 'Location undisclosed' : '장소 상세 미제공')}</span>
+                            {Number.isFinite(ev.distance_m) && <p className="text-[11px] text-purple-600 mt-2">{lang === 'en' ? 'Approx. ' : '약 '}{(ev.distance_m / 1000).toFixed(1)}km</p>}
                           </div>
                       )) : <p className="text-gray-500 text-sm text-center py-10 bg-gray-50 rounded-2xl">{lang === 'en' ? 'No current events.' : '현재 예정된 행사가 없습니다.'}</p>}
                     </div>
