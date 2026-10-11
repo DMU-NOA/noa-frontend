@@ -117,7 +117,7 @@ export default function Home() {
 
   const getCongestionStyle = (level) => {
     const s = String(level ?? "").toLowerCase();
-    if (!s || s === '데이터 없음' || s === 'no data') return { bg: 'bg-white/20', text: 'text-white/70', label: lang === 'en' ? 'No Data' : '정보없음' };
+    if (!s || s === '데이터 없음' || s === 'no data') return { bg: 'bg-white/20', text: 'text-white/70', label: lang === 'en' ? 'Not available' : '혼잡도 미제공' };
     if (s.includes('혼잡') || s.includes('붐빔') || s.includes('crowd')) return { bg: 'bg-red-500/80', text: 'text-white', label: lang === 'en' ? 'Crowded' : '혼잡' };
     if (s.includes('보통') || s.includes('normal') || s.includes('moderate')) return { bg: 'bg-orange-400/80', text: 'text-white', label: lang === 'en' ? 'Normal' : '보통' };
     return { bg: 'bg-emerald-500/80', text: 'text-white', label: lang === 'en' ? 'Quiet' : '여유' };
@@ -293,9 +293,7 @@ export default function Home() {
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                     />
                   ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-gray-600 to-gray-800 flex items-center justify-center">
-                      <MapPin className="w-10 h-10 text-white/20" />
-                    </div>
+                    <img src="/spot-placeholder.svg" alt="관광지 이미지 준비 중" className="w-full h-full object-cover" />
                   )}
 
                   {/* 하단 그라디언트 오버레이 */}

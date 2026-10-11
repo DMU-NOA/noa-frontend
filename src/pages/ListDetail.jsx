@@ -227,7 +227,7 @@ const handleLike = async () => {
 
   const getCongestionInfo = (level) => {
     const l = level ? level.toLowerCase() : '';
-    if (!l || l === '데이터 없음' || l === 'no data') return { rate: 0, text: lang === 'en' ? 'No Data' : '정보없음', color: 'text-gray-400', bar: 'bg-gray-400' };
+    if (!l || l === '데이터 없음' || l === 'no data') return { rate: 0, text: lang === 'en' ? 'Not available' : '혼잡도 미제공', color: 'text-gray-400', bar: 'bg-gray-400' };
     if (l.includes('혼잡') || l.includes('붐빔') || l.includes('crowd')) return { rate: 100, text: lang === 'en' ? 'Crowded' : '혼잡', color: 'text-red-500', bar: 'bg-red-500' };
     if (l.includes('보통') || l.includes('normal')) return { rate: 50, text: lang === 'en' ? 'Normal' : '보통', color: 'text-orange-500', bar: 'bg-orange-400' };
     return { rate: 20, text: lang === 'en' ? 'Relax' : '여유', color: 'text-emerald-500', bar: 'bg-emerald-500' };
@@ -270,7 +270,7 @@ const handleLike = async () => {
         {spot.image_url ? (
           <img src={spot.image_url} onError={(e) => { e.currentTarget.src = "/spot-placeholder.svg"; e.currentTarget.onerror = null; }} alt={spot.name} className="w-full h-full object-cover" />
         ) : (
-          <div className="w-full h-full bg-gradient-to-br from-gray-600 to-gray-800" />
+          <img src="/spot-placeholder.svg" alt="관광지 이미지 준비 중" className="w-full h-full object-cover" />
         )}
         {/* 상단 그라디언트 */}
         <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-black/60" />
