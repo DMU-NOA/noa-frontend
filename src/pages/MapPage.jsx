@@ -328,7 +328,14 @@ const handleLocateMe = () => {
                     <div className="flex items-center gap-1.5 mb-3 bg-gray-50 p-1.5 rounded-lg w-fit pr-3">
                       <div className="w-2 h-2 rounded-full" style={{ backgroundColor: spotColor }} />
                       <span className="text-[11px] font-bold text-gray-700">
-                        {lang === 'en' ? 'Currently ' : '현재 '}<span style={{ color: spotColor }}>{spot.congestion_level}</span>
+                        {spot.congestion_source === 'actual'
+                          ? (lang === 'en' ? 'Observed: ' : '실측: ')
+                          : spot.congestion_source === 'predicted'
+                            ? (spot.prediction_verified
+                                ? (lang === 'en' ? 'ML: ' : 'ML 예측: ')
+                                : (lang === 'en' ? 'Experimental: ' : '시범 추정: '))
+                            : (lang === 'en' ? 'Unavailable: ' : '정보: ')}
+                        <span style={{ color: spotColor }}>{spot.congestion_level}</span>
                       </span>
                     </div>
 
