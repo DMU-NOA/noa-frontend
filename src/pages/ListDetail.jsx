@@ -39,6 +39,7 @@ export default function ListDetail() {
 
   const [spot, setSpot] = useState(null);
   const [forecast, setForecast] = useState([]);
+  const [forecastMeta, setForecastMeta] = useState(null);
   const [addInfo, setAddInfo] = useState(null);
   const [, setAlternatives] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -55,6 +56,7 @@ export default function ListDetail() {
   setIsLoading(true);
   setAddInfo(null);
   setForecast([]);
+  setForecastMeta(null);
 
   try {
     // 1. 관광지 기본 정보
@@ -88,36 +90,21 @@ export default function ListDetail() {
       setLiked(false);
     }
 
-    // ============================================
-    // actual 장소만 서울시 실시간 API 사용
-    // ============================================
-    if (currentSpot.area_cd) {
-
-      // 3. 시간대별 혼잡도 예보
-      try {
-        const forecastRes = await apiClient.get(
-          `/api/spots/${currentSpot.area_cd}/forecast?lang=${lang}`
-        );
-
-        setForecast(
-          forecastRes.data.forecast || []
-        );
-      } catch (forecastErr) {
-        console.error(
-          '혼잡도 예보 로드 실패:',
-          forecastErr
-        );
-
-        setForecast([]);
+    // 3. 모든 관광지 공통: 파이프라인 DB에 적재한 공식 예보 또는 검증된 ML.
+    try {
+      const forecastRes = await apiClient.get(
+        `/api/spots/${currentSpot.spot_id}/forecast?lang=${lang}`
+      );
+      if (isMounted) {
+        setForecast(forecastRes.data.forecast || []);
+        setForecastMeta(forecastRes.data);
       }
-
-    } else {
-      // ============================================
-      // predicted 장소
-      // TourAPI 장소이므로 서울시 API 호출 X
-      // ============================================
-
-      setForecast([]);
+    } catch (forecastErr) {
+      console.error('시간별 혼잡도 예보 조회 실패:', forecastErr);
+      if (isMounted) {
+        setForecast([]);
+        setForecastMeta(null);
+      }
     }
 
     // 4. 모든 관광지 공통: DB 인근 날씨 및 축제, 실측 지역 교통.
@@ -229,7 +216,8 @@ const handleLike = async () => {
     return { rate: 20, text: lang === 'en' ? 'Relax' : '여유', color: 'text-emerald-500', bar: 'bg-emerald-500' };
   };
 
-  const maxPop = forecast.length > 0 ? Math.max(...forecast.map(d => d.population)) : 1;
+  const hasPopulationForecast = forecast.some(d => Number.isFinite(d.population) && d.population > 0);
+  const maxPop = hasPopulationForecast ? Math.max(1, ...forecast.map(d => Number.isFinite(d.population) ? d.population : 0)) : 1;
   const maxPopItem = forecast.find(d => d.population === maxPop) || { level: '여유' };
   
   const getLevelRatio = (level) => {
@@ -240,7 +228,7 @@ const handleLike = async () => {
       if (l.includes('보통') || l.includes('normal')) return 0.55;
       return 0.35; 
   };
-  const chartMaxPop = maxPop / getLevelRatio(maxPopItem.level);
+  const chartMaxPop = Math.max(1, maxPop / getLevelRatio(maxPopItem.level));
 
   const formatPop = (num) => {
       if (num >= 10000) return (num / 10000).toFixed(1) + '만';
@@ -353,13 +341,27 @@ const handleLike = async () => {
         {forecast && forecast.length > 0 && (
           <div className="w-full">
             <div className="flex justify-between items-end mb-6">
-                <h3 className="text-lg font-bold text-gray-900">{lang === 'en' ? 'Hourly Forecast' : '시간대별 예상 인구'}</h3>
-                <span className="text-[11px] font-medium text-gray-400">{lang === 'en' ? 'Unit: ppl' : '단위: 명 (최대 인구 기준)'}</span>
+                <h3 className="text-lg font-bold text-gray-900">{lang === 'en' ? 'Hourly Congestion Forecast' : '시간대별 혼잡도 전망'}</h3>
+                <span className="text-[11px] font-medium text-gray-400">{hasPopulationForecast ? (lang === 'en' ? 'Estimated max people' : '예상 인구 상한 · 명') : (lang === 'en' ? 'Congestion level' : '혼잡 단계')}</span>
             </div>
             
+            <p className="text-[11px] text-gray-500 mb-3">
+              {forecastMeta?.source === 'validated_ml_v2'
+                ? (lang === 'en' ? 'NOA validated ML · area-level hourly forecast' : 'NOA 검증 ML · 서울시 지역 단위 시간별 예측')
+                : (lang === 'en' ? 'Official Seoul CityData hourly forecast' : '서울시 CityData 공식 시간별 예보')}
+              {forecastMeta?.regional_reference && (lang === 'en'
+                ? ' · Nearby region reference, not a direct tourist-site measurement'
+                : ' · 인근 지역 참고값 (관광지 자체 실측 아님)')}
+              {forecastMeta?.observed_at && ` · ${new Date(forecastMeta.observed_at).toLocaleString(
+                lang === 'en' ? 'en-US' : 'ko-KR',
+                { timeZone: 'Asia/Seoul', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }
+              )}`}
+            </p>
             <div className="flex items-end justify-between h-48 px-1">
               {forecast.map((data, index) => {
-                const heightPercent = Math.min((data.population / chartMaxPop) * 100, 100);
+                const heightPercent = hasPopulationForecast
+                  ? Math.min((Number(data.population || 0) / chartMaxPop) * 100, 100)
+                  : Math.round(getLevelRatio(data.level) * 100);
                 // 💡 영어 라벨 분기 적용
                 let barColor = 'bg-emerald-400', textColor = 'text-emerald-600', shortLevel = lang === 'en' ? 'Relax' : '여유';
                 const l = data.level.toLowerCase();
@@ -372,7 +374,7 @@ const handleLike = async () => {
                     <div className="flex flex-col items-center justify-end h-8 mb-1">
                       <span className={`text-[10px] font-black ${textColor} tracking-tighter`}>{shortLevel}</span>
                       <span className="text-[9px] font-semibold text-gray-400 tracking-tighter mt-0.5">
-                        {formatPop(data.population)}
+                        {hasPopulationForecast && data.population != null ? formatPop(data.population) : '·'}
                       </span>
                     </div>
                     <div className="w-full h-32 flex items-end justify-center">
