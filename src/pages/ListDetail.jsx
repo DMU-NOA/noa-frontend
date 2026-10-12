@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, MapPin, User, CloudSun, Car, CalendarDays, X, Loader2, Sparkles, Heart, Compass } from 'lucide-react';
+import { ChevronLeft, ChevronRight, MapPin, User, CloudSun, Car, CalendarDays, X, Loader2, Heart, Compass } from 'lucide-react';
 import BottomNav from '../components/BottomNav';
 import apiClient from '../api/client';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -39,8 +39,9 @@ export default function ListDetail() {
 
   const [spot, setSpot] = useState(null);
   const [forecast, setForecast] = useState([]);
+  const [forecastMeta, setForecastMeta] = useState(null);
   const [addInfo, setAddInfo] = useState(null);
-  const [alternatives, setAlternatives] = useState([]);
+  const [, setAlternatives] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeModal, setActiveModal] = useState(null);
   const [loadingAddInfo, setLoadingAddInfo] = useState(false);
@@ -52,60 +53,146 @@ export default function ListDetail() {
     let isMounted = true;
 
     const fetchData = async () => {
-      setIsLoading(true);
-      try {
-        // 1. 관광지 기본 정보 로드
-        const spotRes = await apiClient.get(`/api/spots/${id}?lang=${lang}`);
-        if (isMounted) {
-        setSpot(spotRes.data);
-        setIsLoading(false);
-        }
-        // 💡 2. 좋아요(찜) 상태 초기 확인 추가!
-        try {
-          const likesRes = await apiClient.get(`/api/likes?lang=${lang}`);
-          // 내 찜 목록(likesRes.data) 중에 현재 관광지 id(area_cd)가 있는지 확인
-          const isAlreadyLiked = likesRes.data.some((item) => item.area_cd === id);
-          setLiked(isAlreadyLiked); // 있으면 true(빨간 하트), 없으면 false(빈 하트)
-        } catch (likeErr) {
-          console.error('좋아요 상태 확인 실패:', likeErr);
-        }
+  setIsLoading(true);
+  setAddInfo(null);
+  setForecast([]);
+  setForecastMeta(null);
 
-        // 3. 혼잡도 예측 데이터 로드
-        const forecastRes = await apiClient.get(`/api/spots/${id}/forecast?lang=${lang}`);
-        setForecast(forecastRes.data.forecast);
-        
-        // 4. 날씨/교통 등 부가정보 로드
-        const infoRes = await apiClient.get(`/api/spots/${id}/additional-info?lang=${lang}`);
-        setAddInfo(infoRes.data);
+  try {
+    // 1. 관광지 기본 정보
+    const spotRes = await apiClient.get(
+      `/api/spots/${id}?lang=${lang}`
+    );
 
-        // 5. 대안 장소 미리보기
-        try {
-          const altRes = await apiClient.get(`/api/spots/${id}/alternatives?lang=${lang}`);
-          setAlternatives(altRes.data.alternatives?.slice(0, 3) || []);
-        } catch { /* 대안 없어도 무관 */ }
-      } catch (err) {
-        console.error('데이터 로드 실패:', err);
-      } finally {
-        setIsLoading(false);
+    const currentSpot = spotRes.data;
+
+    if (!isMounted) return;
+
+    setSpot(currentSpot);
+
+    // 2. 좋아요 상태 - actual / predicted 공통
+    try {
+      const likesRes = await apiClient.get(
+        `/api/likes?lang=${lang}`
+      );
+
+      const isAlreadyLiked = likesRes.data.some(
+        (item) => item.spot_id === currentSpot.spot_id
+      );
+
+      setLiked(isAlreadyLiked);
+    } catch (likeErr) {
+      console.error(
+        '좋아요 상태 확인 실패:',
+        likeErr
+      );
+
+      setLiked(false);
+    }
+
+    // 3. 모든 관광지 공통: 파이프라인 DB에 적재한 공식 예보 또는 검증된 ML.
+    try {
+      const forecastRes = await apiClient.get(
+        `/api/spots/${currentSpot.spot_id}/forecast?lang=${lang}`
+      );
+      if (isMounted) {
+        setForecast(forecastRes.data.forecast || []);
+        setForecastMeta(forecastRes.data);
       }
-    };
-    fetchData();
-    return () => { isMounted = false; };
+    } catch (forecastErr) {
+      console.error('시간별 혼잡도 예보 조회 실패:', forecastErr);
+      if (isMounted) {
+        setForecast([]);
+        setForecastMeta(null);
+      }
+    }
+
+    // 4. 모든 관광지 공통: DB 인근 날씨 및 축제, 실측 지역 교통.
+    try {
+      const infoRes = await apiClient.get(
+        `/api/spots/${currentSpot.spot_id}/additional-info?lang=${lang}`
+      );
+      if (isMounted) setAddInfo(infoRes.data);
+    } catch (infoErr) {
+      console.error('부가정보 로드 실패:', infoErr);
+      if (isMounted) setAddInfo(null);
+    }
+
+    // 5. 대안 관광지 - actual / predicted 공통
+    try {
+      const altRes = await apiClient.get(
+        `/api/spots/${currentSpot.spot_id}/alternatives?lang=${lang}`
+      );
+
+      const altData = Array.isArray(altRes.data)
+        ? altRes.data
+        : altRes.data.alternatives || [];
+
+      setAlternatives(
+        altData.slice(0, 3)
+      );
+
+    } catch (altErr) {
+      console.error(
+        '대안 관광지 로드 실패:',
+        altErr
+      );
+
+      setAlternatives([]);
+    }
+
+  } catch (err) {
+    console.error(
+      '데이터 로드 실패:',
+      err
+    );
+
+  } finally {
+    if (isMounted) {
+      setIsLoading(false);
+    }
+  }
+};
+
+  fetchData();
+
+  return () => {
+    isMounted = false;
+  };
+
   }, [id, lang]);
 
   // 좋아요 토글
-  const handleLike = async () => {
-    try {
-      if (liked) {
-        await apiClient.delete(`/api/likes/${id}`);
-      } else {
-        await apiClient.post('/api/likes', { area_cd: id });
-      }
-      setLiked(!liked);
-    } catch (error) {
-      console.error("좋아요 처리 실패:", error);
+const handleLike = async () => {
+  if (!spot?.spot_id || !spot?.content_id) {
+    return;
+  }
+
+  try {
+    if (liked) {
+      await apiClient.delete(
+        `/api/likes/${spot.spot_id}`
+      );
+    } else {
+      await apiClient.post(
+        '/api/likes',
+        {
+          spot_id: spot.spot_id,
+          area_cd: spot.area_cd || null,
+          content_id: spot.content_id
+        }
+      );
     }
-  };
+
+    setLiked((prev) => !prev);
+
+  } catch (error) {
+    console.error(
+      "좋아요 처리 실패:",
+      error
+    );
+  }
+};
 
   const handleOpenModal = async (type) => {
     setActiveModal(type); 
@@ -123,13 +210,14 @@ export default function ListDetail() {
 
   const getCongestionInfo = (level) => {
     const l = level ? level.toLowerCase() : '';
-    if (!l || l === '데이터 없음' || l === 'no data') return { rate: 0, text: lang === 'en' ? 'No Data' : '정보없음', color: 'text-gray-400', bar: 'bg-gray-400' };
+    if (!l || l === '데이터 없음' || l === 'no data') return { rate: 0, text: lang === 'en' ? 'Not available' : '혼잡도 미제공', color: 'text-gray-400', bar: 'bg-gray-400' };
     if (l.includes('혼잡') || l.includes('붐빔') || l.includes('crowd')) return { rate: 100, text: lang === 'en' ? 'Crowded' : '혼잡', color: 'text-red-500', bar: 'bg-red-500' };
     if (l.includes('보통') || l.includes('normal')) return { rate: 50, text: lang === 'en' ? 'Normal' : '보통', color: 'text-orange-500', bar: 'bg-orange-400' };
     return { rate: 20, text: lang === 'en' ? 'Relax' : '여유', color: 'text-emerald-500', bar: 'bg-emerald-500' };
   };
 
-  const maxPop = forecast.length > 0 ? Math.max(...forecast.map(d => d.population)) : 1;
+  const hasPopulationForecast = forecast.some(d => Number.isFinite(d.population) && d.population > 0);
+  const maxPop = hasPopulationForecast ? Math.max(1, ...forecast.map(d => Number.isFinite(d.population) ? d.population : 0)) : 1;
   const maxPopItem = forecast.find(d => d.population === maxPop) || { level: '여유' };
   
   const getLevelRatio = (level) => {
@@ -140,7 +228,7 @@ export default function ListDetail() {
       if (l.includes('보통') || l.includes('normal')) return 0.55;
       return 0.35; 
   };
-  const chartMaxPop = maxPop / getLevelRatio(maxPopItem.level);
+  const chartMaxPop = Math.max(1, maxPop / getLevelRatio(maxPopItem.level));
 
   const formatPop = (num) => {
       if (num >= 10000) return (num / 10000).toFixed(1) + '만';
@@ -164,9 +252,9 @@ export default function ListDetail() {
       {/* 히어로 이미지 + 오버레이 헤더 */}
       <div className="relative w-full h-[300px]">
         {spot.image_url ? (
-          <img src={spot.image_url} alt={spot.name} className="w-full h-full object-cover" />
+          <img src={spot.image_url} onError={(e) => { e.currentTarget.src = "/spot-placeholder.svg"; e.currentTarget.onerror = null; }} alt={spot.name} className="w-full h-full object-cover" />
         ) : (
-          <div className="w-full h-full bg-gradient-to-br from-gray-600 to-gray-800" />
+          <img src="/spot-placeholder.svg" alt="관광지 이미지 준비 중" className="w-full h-full object-cover" />
         )}
         {/* 상단 그라디언트 */}
         <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-black/60" />
@@ -176,16 +264,30 @@ export default function ListDetail() {
           <button type="button" onClick={() => navigate(-1)} className="w-9 h-9 bg-black/25 backdrop-blur-sm rounded-full flex items-center justify-center active:scale-90 transition-transform">
             <ChevronLeft className="w-5 h-5 text-white" />
           </button>
-          <button type="button" onClick={handleLike} className="w-9 h-9 bg-black/25 backdrop-blur-sm rounded-full flex items-center justify-center active:scale-90 transition-transform">
-            <Heart className={`w-4.5 h-4.5 transition-colors ${liked ? 'fill-red-400 text-red-400' : 'text-white'}`} />
-          </button>
+  <button
+    type="button"
+    onClick={handleLike}
+    className="w-9 h-9 bg-black/25 backdrop-blur-sm rounded-full flex items-center justify-center active:scale-90 transition-transform"
+  >
+    <Heart
+      className={`w-4.5 h-4.5 transition-colors ${
+        liked
+          ? 'fill-red-400 text-red-400'
+          : 'text-white'
+      }`}
+    />
+  </button>
         </div>
 
         {/* 하단 장소명 + 주소 */}
         <div className="absolute bottom-0 left-0 right-0 px-5 pb-5">
           <h1 className="text-[22px] font-bold text-white mb-1">{spot.name}</h1>
           <button
-            onClick={() => navigate('/map', { state: { selectedSpot: spot.area_cd }})}
+            onClick={() => navigate('/map', {
+  state: {
+    selectedSpot: spot.spot_id
+  }
+})}
             className="flex items-center gap-1.5 active:opacity-70 transition-opacity"
           >
             <MapPin className="w-3.5 h-3.5 text-white/70 shrink-0" />
@@ -198,7 +300,23 @@ export default function ListDetail() {
 
       {/* 💡 2. 혼잡도 섹션 */}
       <section className="px-5 pt-8 pb-8">
-        <h2 className="text-lg font-bold text-gray-900 mb-6">{lang === 'en' ? 'Current Congestion' : '현재 예상 혼잡도'}</h2>
+        <div className="flex items-center justify-between mb-6">
+  <h2 className="text-lg font-bold text-gray-900">
+    {lang === 'en'
+      ? 'Current Congestion'
+      : '현재 예상 혼잡도'}
+  </h2>
+
+  <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-gray-100 text-gray-500">
+    {spot.congestion_source === 'actual'
+      ? (lang === 'en' ? 'Observed' : '실측')
+      : spot.congestion_source === 'predicted'
+        ? spot.prediction_verified
+          ? (lang === 'en' ? 'ML Prediction' : 'ML 예측')
+          : (lang === 'en' ? 'Experimental estimate · not validated' : '시범 추정 · 미검증')
+        : (lang === 'en' ? 'Unavailable' : '미제공')}
+  </span>
+</div>
         <div className="mb-6">
           <div className="h-3 rounded-full bg-gray-100 overflow-hidden mb-2">
             <div
@@ -223,13 +341,27 @@ export default function ListDetail() {
         {forecast && forecast.length > 0 && (
           <div className="w-full">
             <div className="flex justify-between items-end mb-6">
-                <h3 className="text-lg font-bold text-gray-900">{lang === 'en' ? 'Hourly Forecast' : '시간대별 예상 인구'}</h3>
-                <span className="text-[11px] font-medium text-gray-400">{lang === 'en' ? 'Unit: ppl' : '단위: 명 (최대 인구 기준)'}</span>
+                <h3 className="text-lg font-bold text-gray-900">{lang === 'en' ? 'Hourly Congestion Forecast' : '시간대별 혼잡도 전망'}</h3>
+                <span className="text-[11px] font-medium text-gray-400">{hasPopulationForecast ? (lang === 'en' ? 'Estimated max people' : '예상 인구 상한 · 명') : (lang === 'en' ? 'Congestion level' : '혼잡 단계')}</span>
             </div>
             
+            <p className="text-[11px] text-gray-500 mb-3">
+              {forecastMeta?.source === 'validated_ml_v2'
+                ? (lang === 'en' ? 'NOA validated ML · area-level hourly forecast' : 'NOA 검증 ML · 서울시 지역 단위 시간별 예측')
+                : (lang === 'en' ? 'Official Seoul CityData hourly forecast' : '서울시 CityData 공식 시간별 예보')}
+              {forecastMeta?.regional_reference && (lang === 'en'
+                ? ' · Nearby region reference, not a direct tourist-site measurement'
+                : ' · 인근 지역 참고값 (관광지 자체 실측 아님)')}
+              {forecastMeta?.observed_at && ` · ${new Date(forecastMeta.observed_at).toLocaleString(
+                lang === 'en' ? 'en-US' : 'ko-KR',
+                { timeZone: 'Asia/Seoul', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }
+              )}`}
+            </p>
             <div className="flex items-end justify-between h-48 px-1">
               {forecast.map((data, index) => {
-                const heightPercent = Math.min((data.population / chartMaxPop) * 100, 100);
+                const heightPercent = hasPopulationForecast
+                  ? Math.min((Number(data.population || 0) / chartMaxPop) * 100, 100)
+                  : Math.round(getLevelRatio(data.level) * 100);
                 // 💡 영어 라벨 분기 적용
                 let barColor = 'bg-emerald-400', textColor = 'text-emerald-600', shortLevel = lang === 'en' ? 'Relax' : '여유';
                 const l = data.level.toLowerCase();
@@ -242,7 +374,7 @@ export default function ListDetail() {
                     <div className="flex flex-col items-center justify-end h-8 mb-1">
                       <span className={`text-[10px] font-black ${textColor} tracking-tighter`}>{shortLevel}</span>
                       <span className="text-[9px] font-semibold text-gray-400 tracking-tighter mt-0.5">
-                        {formatPop(data.population)}
+                        {hasPopulationForecast && data.population != null ? formatPop(data.population) : '·'}
                       </span>
                     </div>
                     <div className="w-full h-32 flex items-end justify-center">
@@ -281,7 +413,11 @@ export default function ListDetail() {
         <h2 className="text-lg font-bold text-gray-900 mb-4">{lang === 'en' ? 'Spot Info' : '관광지 정보'}</h2>
         <div className="flex flex-col gap-4 text-gray-600 text-sm mb-10 bg-gray-50 p-5 rounded-2xl border border-gray-100">
           <button 
-            onClick={() => navigate('/map', { state: { selectedSpot: spot.area_cd }})}
+            onClick={() => navigate('/map', {
+  state: {
+    selectedSpot: spot.spot_id
+  }
+})}
             className="flex items-center gap-3 w-full text-left group active:opacity-50 transition-opacity"
           >
             <MapPin className="w-5 h-5 text-gray-400 shrink-0 group-hover:text-blue-500 transition-colors" />
@@ -305,37 +441,62 @@ export default function ListDetail() {
 
       </div>{/* 본문 카드 닫기 */}
 
-      {/* 하단 고정 CTA */}
-      <div className="fixed bottom-20 left-1/2 -translate-x-1/2 w-full max-w-md px-4 z-40 pointer-events-none">
-        <button
-          type="button"
-          onClick={() => navigate('/alternatives', { state: { area_cd: id } })}
-          className={`pointer-events-auto w-full flex items-center justify-between px-5 h-14 rounded-2xl text-white text-[14px] font-bold active:scale-[0.98] transition-all ${
-            info.text === '혼잡' || info.text === 'Crowded'
-              ? 'bg-red-500 shadow-[0_8px_24px_rgba(239,68,68,0.4)]'
-              : info.text === '보통' || info.text === 'Normal'
-              ? 'bg-orange-500 shadow-[0_8px_24px_rgba(249,115,22,0.4)]'
-              : 'bg-emerald-500 shadow-[0_8px_24px_rgba(16,185,129,0.4)]'
-          }`}
-        >
-          <div className="flex flex-col items-start">
-            <span className="text-[11px] font-medium opacity-75 mb-0.5">
-              {info.text === '혼잡' || info.text === 'Crowded'
-                ? (lang === 'en' ? 'It\'s pretty crowded here' : '여기 지금 복잡해요')
-                : info.text === '보통' || info.text === 'Normal'
-                ? (lang === 'en' ? 'Getting a little busy' : '슬슬 사람이 많아지고 있어요')
-                : (lang === 'en' ? 'Quiet here, but options await' : '지금은 쾌적해요')}
-            </span>
-            <div className="flex items-center gap-1.5">
-              <Compass className="w-4 h-4 opacity-80" />
-              <span>{lang === 'en' ? 'See alternative spots' : '대안 관광지 보러가기'}</span>
-            </div>
-          </div>
-          <ChevronRight className="w-5 h-5 opacity-60 shrink-0" />
-        </button>
+      {/* 하단 고정 CTA - actual / predicted 공통 */}
+  <div className="fixed bottom-20 left-1/2 -translate-x-1/2 w-full max-w-md px-4 z-40 pointer-events-none">
+    <button
+      type="button"
+      onClick={() =>
+        navigate('/alternatives', {
+          state: {
+            spot_id: spot.spot_id,
+            area_cd: spot.area_cd
+          }
+        })
+      }
+      className={`pointer-events-auto w-full flex items-center justify-between px-5 h-14 rounded-2xl text-white text-[14px] font-bold active:scale-[0.98] transition-all ${
+        info.text === '혼잡' || info.text === 'Crowded'
+          ? 'bg-red-500 shadow-[0_8px_24px_rgba(239,68,68,0.4)]'
+          : info.text === '보통' || info.text === 'Normal'
+          ? 'bg-orange-500 shadow-[0_8px_24px_rgba(249,115,22,0.4)]'
+          : 'bg-emerald-500 shadow-[0_8px_24px_rgba(16,185,129,0.4)]'
+      }`}
+    >
+      <div className="flex flex-col items-start">
+        <span className="text-[11px] font-medium opacity-75 mb-0.5">
+          {info.text === '혼잡' || info.text === 'Crowded'
+            ? (
+              lang === 'en'
+                ? "It's pretty crowded here"
+                : '여기 지금 복잡해요'
+            )
+            : info.text === '보통' || info.text === 'Normal'
+            ? (
+              lang === 'en'
+                ? 'Getting a little busy'
+                : '슬슬 사람이 많아지고 있어요'
+            )
+            : (
+              lang === 'en'
+                ? 'Quiet here, but options await'
+                : '지금은 쾌적해요'
+            )}
+        </span>
+
+        <div className="flex items-center gap-1.5">
+          <Compass className="w-4 h-4 opacity-80" />
+          <span>
+            {lang === 'en'
+              ? 'See alternative spots'
+              : '대안 관광지 보러가기'}
+          </span>
+        </div>
       </div>
 
-      <BottomNav />
+      <ChevronRight className="w-5 h-5 opacity-60 shrink-0" />
+    </button>
+  </div>
+
+<BottomNav />
 
       {/* 부가정보 모달창 영역 (이전과 동일하게 유지) */}
       {activeModal && (
@@ -360,74 +521,234 @@ export default function ListDetail() {
                     <h3 className="text-xl font-black text-gray-900 mb-6 flex items-center gap-2">
                       <CloudSun className="text-sky-500 w-6 h-6" /> {lang === 'en' ? 'Weather & Air' : '날씨 및 대기환경'}
                     </h3>
-                    <div className="flex flex-col gap-5 text-gray-700">
+                    {addInfo.weather ? (
+                      <>
+                        <p className="text-[11px] text-gray-500 mb-4">
+                          {addInfo.weather.nearby
+                            ? (lang === 'en' ? 'Nearby CityData observation' : '인근 서울시 지역 관측값')
+                            : (lang === 'en' ? 'CityData observation' : '서울시 도시데이터 관측값')}
+                          {Number.isFinite(addInfo.weather.distance_m) && ` · ${addInfo.weather.distance_m}m`}
+                          {addInfo.weather.observed_at && (
+                            <> · {new Date(addInfo.weather.observed_at).toLocaleString(lang === 'en' ? 'en-US' : 'ko-KR', { timeZone: 'Asia/Seoul', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })} {lang === 'en' ? 'observed' : '관측'}</>
+                          )}
+                        </p>
+                        <div className="flex flex-col gap-5 text-gray-700">
                       <div className="bg-linear-to-br from-sky-50 to-blue-50 p-5 rounded-3xl flex justify-between items-center shadow-sm">
                         <div className="flex flex-col">
                           <span className="text-sm font-bold text-sky-800 mb-1">{lang === 'en' ? 'Current Temp' : '현재 기온'}</span>
-                          <span className="text-3xl font-black text-sky-600">{addInfo.weather?.temp}℃</span>
+                          <span className="text-3xl font-black text-sky-600">{addInfo.weather.temp != null ? `${addInfo.weather.temp}℃` : '-'}</span>
                         </div>
                         <div className="text-right flex flex-col gap-1">
-                          <span className="text-sm font-semibold text-gray-600">{lang === 'en' ? 'Humidity' : '습도'}: {addInfo.weather?.humidity}%</span>
-                          <span className="text-sm font-semibold text-gray-600">{lang === 'en' ? 'Precipitation' : '강수'}: {addInfo.weather?.msg}</span>
+                          <span className="text-sm font-semibold text-gray-600">{lang === 'en' ? 'Humidity' : '습도'}: {addInfo.weather.humidity != null ? `${addInfo.weather.humidity}%` : '-'}</span>
+                          <span className="text-sm font-semibold text-gray-600">{lang === 'en' ? 'Precipitation' : '강수'}: {addInfo.weather.msg || (lang === 'en' ? 'Not provided' : '정보 없음')}</span>
                         </div>
                       </div>
 
                       <div>
-                        <h4 className="font-bold text-sm text-gray-800 mb-3">{lang === 'en' ? 'Hourly Weather' : '시간대별 날씨'}</h4>
+                        <h4 className="font-bold text-sm text-gray-800 mb-3">{lang === 'en' ? 'Hourly Weather' : '시간대별 날씨 예보'}</h4>
+                        {addInfo.weather.forecast24?.length > 0 ? (
                         <div ref={weatherScroll.ref} className={`flex gap-3 overflow-x-auto pb-2 ${weatherScroll.className}`} {...weatherScroll.events}>
-                          {addInfo.weather?.forecast24?.map((f, i) => (
+                          {addInfo.weather.forecast24.map((f, i) => (
                             <div key={i} className="flex flex-col items-center bg-gray-50 rounded-2xl p-3 min-w-16 shrink-0 pointer-events-none">
                               <span className="text-xs font-bold text-gray-500 mb-2">{f.time}</span>
-                              <span className="text-lg mb-1">{f.sky.includes('구름') ? '☁️' : f.sky.includes('비') ? '🌧️' : '☀️'}</span>
+                              <span className="text-lg mb-1">{f.sky?.includes('구름') ? '☁️' : f.sky?.includes('비') ? '🌧️' : f.sky === '맑음' || f.sky === 'Clear' ? '☀️' : '🌤️'}</span>
                               <span className="text-sm font-black text-gray-800">{f.temp}℃</span>
                               {f.rain_chance !== "0" && <span className="text-[10px] text-blue-500 font-bold mt-1">{f.rain_chance}%</span>}
                             </div>
                           ))}
                         </div>
+                        ) : <p className="text-xs text-gray-400">{lang === 'en' ? 'No recent forecast available.' : '현재 제공 가능한 시간대별 예보가 없습니다.'}</p>}
                       </div>
 
                       <div className="grid grid-cols-2 gap-3">
                         <div className="bg-gray-50 p-4 rounded-2xl">
                           <span className="block text-xs font-bold text-gray-500 mb-1">{lang === 'en' ? 'PM10' : '미세먼지 (PM10)'}</span>
-                          <div className="flex items-end gap-2"><span className="text-lg font-black text-gray-800">{addInfo.weather?.pm10}</span><span className="text-xs text-gray-400 mb-1">{addInfo.weather?.pm10_val}㎍/㎥</span></div>
+                          <div className="flex items-end gap-2"><span className="text-lg font-black text-gray-800">{addInfo.weather.pm10 || (lang === 'en' ? 'Unavailable' : '정보 없음')}</span><span className="text-xs text-gray-400 mb-1">{addInfo.weather.pm10_val != null ? `${addInfo.weather.pm10_val}㎍/㎥` : '-'}</span></div>
                         </div>
                         <div className="bg-gray-50 p-4 rounded-2xl">
                           <span className="block text-xs font-bold text-gray-500 mb-1">{lang === 'en' ? 'PM2.5' : '초미세먼지 (PM2.5)'}</span>
-                          <div className="flex items-end gap-2"><span className="text-lg font-black text-gray-800">{addInfo.weather?.pm25}</span><span className="text-xs text-gray-400 mb-1">{addInfo.weather?.pm25_val}㎍/㎥</span></div>
+                          <div className="flex items-end gap-2"><span className="text-lg font-black text-gray-800">{addInfo.weather.pm25 || (lang === 'en' ? 'Unavailable' : '정보 없음')}</span><span className="text-xs text-gray-400 mb-1">{addInfo.weather.pm25_val != null ? `${addInfo.weather.pm25_val}㎍/㎥` : '-'}</span></div>
                         </div>
                       </div>
-                    </div>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="bg-gray-50 rounded-2xl p-5 text-sm text-gray-500 text-center">
+                        {lang === 'en'
+                          ? 'No recent weather or air-quality observation is available for this spot.'
+                          : '이 여행지에 연결된 최근 3시간의 날씨·미세먼지 관측값이 없습니다.'}
+                      </div>
+                    )}
                   </div>
                 )}
 
                 {activeModal === 'traffic' && (
                   <div className="flex-1 overflow-y-auto pr-2" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                    <h3 className="text-xl font-black text-gray-900 mb-6 flex items-center gap-2"><Car className="text-emerald-500 w-6 h-6" /> {lang === 'en' ? 'Traffic & Parking' : '교통 및 주차 현황'}</h3>
-                    <div className="bg-emerald-50 p-5 rounded-3xl mb-5">
-                      <div className="flex justify-between items-end mb-2"><span className="font-bold text-emerald-800">{lang === 'en' ? 'Avg Traffic Speed' : '주변 평균 차량 속도'}</span><span className="text-2xl font-black text-emerald-600">{addInfo.traffic?.speed} <span className="text-sm">km/h</span></span></div>
-                      <p className="text-sm font-semibold text-emerald-700 bg-white/60 p-2 rounded-xl mt-3">{addInfo.traffic?.msg}</p>
-                    </div>
-                    <h4 className="font-bold text-sm text-gray-800 mb-3">{lang === 'en' ? 'Nearby Parking Lots' : '인근 주차장 실시간 현황'}</h4>
-                    <div className="flex flex-col gap-3">
+                    <h3 className="text-xl font-black text-gray-900 mb-2 flex items-center gap-2">
+                      <Car className="text-emerald-500 w-6 h-6" />
+                      {lang === 'en' ? 'Traffic, Parking & Transit' : '교통·주차·대중교통'}
+                    </h3>
+                    <p className="text-xs text-gray-500 mb-5">
+                      {lang === 'en'
+                        ? 'Live road/parking: Seoul CityData · Transit ridership: historical monthly figures'
+                        : '도로·주차: 서울시 실시간 도시데이터 · 승하차: 과거 월별 집계'}
+                    </p>
+
+                    <h4 className="font-bold text-sm text-gray-800 mb-3">
+                      {lang === 'en' ? 'Road Conditions' : '도로 소통 현황'}
+                    </h4>
+                    {addInfo.traffic ? (
+                      <div className="bg-emerald-50 p-5 rounded-3xl mb-6">
+                        <div className="flex justify-between items-center gap-3">
+                          <span className="font-bold text-emerald-800 text-sm">
+                            {lang === 'en' ? 'Area Average Speed' : '지역 평균 차량 속도'}
+                          </span>
+                          <span className="text-xl font-black text-emerald-600">
+                            {addInfo.traffic.speed} <span className="text-xs">km/h</span>
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-emerald-700 mt-2">
+                          {addInfo.traffic.nearby
+                            ? (lang === 'en' ? 'Nearby observed area (reference, not street-level)' : '인근 서울시 관측 지역의 참고값 · 관광지 앞 도로 실측 아님')
+                            : (lang === 'en' ? 'Seoul CityData mapped area' : '서울시 실측 지역 기준')}
+                          {addInfo.traffic.source_area_name && ` · ${addInfo.traffic.source_area_name}`}
+                          {addInfo.traffic.nearby && Number.isFinite(addInfo.traffic.distance_m) && (
+                            lang === 'en'
+                              ? ` · ${addInfo.traffic.distance_m}m to observation area boundary`
+                              : ` · 관측 지역 경계까지 ${addInfo.traffic.distance_m}m`
+                          )}
+                        </p>
+                        {addInfo.traffic.msg && <p className="text-sm text-emerald-800 mt-2">{addInfo.traffic.msg}</p>}
+                        {addInfo.traffic.observed_at && (
+                          <p className="text-[11px] text-emerald-700/80 mt-2">
+                            {new Date(addInfo.traffic.observed_at).toLocaleString(
+                              lang === 'en' ? 'en-US' : 'ko-KR',
+                              { timeZone: 'Asia/Seoul', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }
+                            )} {lang === 'en' ? 'observed' : '관측'}
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="bg-gray-50 rounded-xl p-4 text-xs text-gray-500 mb-6">
+                        {lang === 'en'
+                          ? 'Recent road traffic is not provided for this tourist spot.'
+                          : '이 관광지에는 최근 도로 소통 관측값이 제공되지 않습니다.'}
+                      </p>
+                    )}
+
+                    <h4 className="font-bold text-sm text-gray-800 mb-3">
+                      {lang === 'en' ? 'Nearby Parking (Live Availability)' : '인근 주차장 실시간 잔여 면수'}
+                    </h4>
+                    <p className="text-[11px] text-gray-500 mb-3">
+                      {lang === 'en'
+                        ? 'Up to 2 km away · Only timestamped live availability'
+                        : '반경 2km 이내 · 실시간 제공 및 갱신 시각이 확인된 주차장'}
+                    </p>
+                    <div className="flex flex-col gap-3 mb-7">
                       {addInfo.parking_lots?.length > 0 ? addInfo.parking_lots.map((p, idx) => (
-                          <div key={idx} className="bg-gray-50 p-4 rounded-2xl flex justify-between items-center border border-gray-100">
-                            <div className="flex flex-col gap-1 w-2/3"><strong className="text-sm text-gray-900 truncate">{p.name}</strong><span className="text-xs text-gray-500">{lang === 'en' ? 'Basic Fee: ' : '기본요금: '}{p.fee > 0 ? `${p.fee}${lang === 'en' ? 'KRW' : '원'}` : (lang === 'en' ? 'No info' : '정보없음')}</span></div>
-                            <div className="text-right"><span className="block text-xs text-gray-500 mb-0.5">{lang === 'en' ? 'Available / Total' : '빈자리 / 총면수'}</span><span className="text-lg font-black text-blue-600">{p.cur}</span><span className="text-sm font-bold text-gray-400"> / {p.max}</span></div>
+                        <div key={idx} className="bg-gray-50 rounded-2xl p-4">
+                          <div className="flex items-center justify-between gap-2">
+                            <strong className="text-sm text-gray-900">{p.name}</strong>
+                            <span className="text-xs text-gray-500 shrink-0">{(p.distance_m / 1000).toFixed(1)}km</span>
                           </div>
-                      )) : <p className="text-gray-500 text-sm text-center py-4 bg-gray-50 rounded-2xl">{lang === 'en' ? 'No parking data.' : '주변 공영/민영 주차장 데이터가 없습니다.'}</p>}
+                          <p className="text-sm font-bold text-blue-600 mt-2">
+                            {lang === 'en' ? 'Available / Capacity: ' : '주차 가능 / 총면수: '}
+                            {p.cur.toLocaleString()} / {p.max.toLocaleString()}
+                          </p>
+                          <p className="text-[11px] text-gray-500 mt-1">
+                            {p.fee != null ? (lang === 'en' ? `Base fee: ${p.fee.toLocaleString()} KRW` : `기본요금: ${p.fee.toLocaleString()}원`) : (lang === 'en' ? 'Fee unavailable' : '요금 정보 없음')}
+                            {p.observed_at && ` · ${new Date(p.observed_at).toLocaleString(
+                              lang === 'en' ? 'en-US' : 'ko-KR',
+                              { timeZone: 'Asia/Seoul', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }
+                            )}`}
+                          </p>
+                        </div>
+                      )) : (
+                        <p className="bg-gray-50 rounded-xl p-4 text-xs text-gray-500">
+                          {lang === 'en' ? 'No nearby parking has confirmed recent availability.' : '최근 잔여 면수가 확인된 인근 주차장 정보가 없습니다.'}
+                        </p>
+                      )}
                     </div>
+
+                    <h4 className="font-bold text-sm text-gray-800 mb-2">
+                      {lang === 'en' ? 'Nearby Subway Stations' : '인근 지하철역'}
+                    </h4>
+                    <p className="text-[11px] text-gray-500 mb-3">
+                      {lang === 'en' ? 'Within 1 km · Straight-line distance' : '반경 1km 이내 · 직선거리 기준'}
+                    </p>
+                    <div className="flex flex-col gap-2 mb-7">
+                      {addInfo.transit?.subway?.length > 0 ? addInfo.transit.subway.map((station, idx) => (
+                        <div key={idx} className="bg-sky-50 p-3 rounded-xl">
+                          <div className="flex justify-between gap-2">
+                            <strong className="text-sm text-gray-900">{station.name}</strong>
+                            <span className="text-xs text-gray-500 shrink-0">{station.distance_m}m</span>
+                          </div>
+                          {station.ridership?.month && (
+                            <p className="text-[11px] text-sky-800 mt-2">
+                              {station.ridership.month} · {station.ridership.hour}{lang === 'en' ? ':00 monthly total' : '시 시간대 월 누적'}
+                              {station.ridership.board_monthly != null && ` · ${lang === 'en' ? 'Board' : '승차'} ${station.ridership.board_monthly.toLocaleString()}`}
+                              {station.ridership.alight_monthly != null && ` · ${lang === 'en' ? 'Alight' : '하차'} ${station.ridership.alight_monthly.toLocaleString()}`}
+                            </p>
+                          )}
+                        </div>
+                      )) : (
+                        <p className="bg-gray-50 rounded-xl p-4 text-xs text-gray-500">
+                          {lang === 'en' ? 'No subway station found within 1 km.' : '1km 이내 연결된 지하철역이 없습니다.'}
+                        </p>
+                      )}
+                    </div>
+
+                    <h4 className="font-bold text-sm text-gray-800 mb-2">
+                      {lang === 'en' ? 'Nearby Bus Stops' : '인근 버스정류장'}
+                    </h4>
+                    <p className="text-[11px] text-gray-500 mb-3">
+                      {lang === 'en' ? 'Within 500 m · Straight-line distance' : '반경 500m 이내 · 직선거리 기준'}
+                    </p>
+                    <div className="flex flex-col gap-2 mb-3">
+                      {addInfo.transit?.bus?.length > 0 ? addInfo.transit.bus.map((stop, idx) => (
+                        <div key={idx} className="bg-amber-50 p-3 rounded-xl">
+                          <div className="flex justify-between gap-2">
+                            <strong className="text-sm text-gray-900">{stop.name}</strong>
+                            <span className="text-xs text-gray-500 shrink-0">{stop.distance_m}m</span>
+                          </div>
+                          {stop.ridership?.month && (
+                            <p className="text-[11px] text-amber-900 mt-2">
+                              {stop.ridership.month} · {stop.ridership.hour}{lang === 'en' ? ':00 monthly total' : '시 시간대 월 누적'}
+                              {stop.ridership.board_monthly != null && ` · ${lang === 'en' ? 'Board' : '승차'} ${stop.ridership.board_monthly.toLocaleString()}`}
+                              {stop.ridership.alight_monthly != null && ` · ${lang === 'en' ? 'Alight' : '하차'} ${stop.ridership.alight_monthly.toLocaleString()}`}
+                            </p>
+                          )}
+                        </div>
+                      )) : (
+                        <p className="bg-gray-50 rounded-xl p-4 text-xs text-gray-500">
+                          {lang === 'en' ? 'No bus stop found within 500 m.' : '500m 이내 연결된 버스정류장이 없습니다.'}
+                        </p>
+                      )}
+                    </div>
+                    <p className="text-[11px] leading-relaxed text-gray-500">
+                      {lang === 'en'
+                        ? 'Transit counts are monthly totals for the shown hour, not live arrival times or present crowding.'
+                        : '승하차 인원은 표시된 월의 해당 시간대 누적 통계이며, 실시간 도착이나 현재 혼잡도가 아닙니다.'}
+                    </p>
                   </div>
                 )}
 
                 {activeModal === 'event' && (
                   <div className="flex-1 overflow-y-auto pr-2" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                    <h3 className="text-xl font-black text-gray-900 mb-6 flex items-center gap-2"><CalendarDays className="text-purple-500 w-6 h-6" /> {lang === 'en' ? 'Ongoing Events' : '진행 중인 행사'}</h3>
+                    <h3 className="text-xl font-black text-gray-900 mb-2 flex items-center gap-2"><CalendarDays className="text-purple-500 w-6 h-6" /> {lang === 'en' ? 'Nearby Festivals & Events' : '주변 축제·행사'}</h3>
+                    <p className="text-xs text-gray-500 mb-5">{lang === 'en' ? 'Within 3 km · Ongoing or starting within 30 days' : '반경 3km · 진행 중 또는 30일 내 시작 예정'}</p>
                     <div className="flex flex-col gap-3">
                       {addInfo.events?.length > 0 ? addInfo.events.map((ev, idx) => (
                           <div key={idx} className="bg-purple-50 p-4 rounded-2xl border border-purple-100">
-                            <strong className="block text-purple-900 mb-1">{ev.name}</strong>
+                            <div className="flex items-center gap-2 mb-1">
+                              <strong className="block text-purple-900 flex-1 min-w-0">{ev.name}</strong>
+                              <span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-bold ${ev.status === 'ongoing' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}>
+                                {ev.status === 'ongoing' ? (lang === 'en' ? 'Ongoing' : '진행 중') : (lang === 'en' ? 'Upcoming' : '예정')}
+                              </span>
+                            </div>
                             <span className="text-xs text-purple-600/80 font-semibold block mb-1">{ev.period}</span>
-                            <span className="text-xs text-purple-800 truncate bg-white/50 px-2 py-1 rounded-md mt-1">📍 {ev.place}</span>
+                            <span className="text-xs text-purple-800 bg-white/50 px-2 py-1 rounded-md mt-1">📍 {ev.place || (lang === 'en' ? 'Location undisclosed' : '장소 상세 미제공')}</span>
+                            {Number.isFinite(ev.distance_m) && <p className="text-[11px] text-purple-600 mt-2">{lang === 'en' ? 'Approx. ' : '약 '}{(ev.distance_m / 1000).toFixed(1)}km</p>}
                           </div>
                       )) : <p className="text-gray-500 text-sm text-center py-10 bg-gray-50 rounded-2xl">{lang === 'en' ? 'No current events.' : '현재 예정된 행사가 없습니다.'}</p>}
                     </div>

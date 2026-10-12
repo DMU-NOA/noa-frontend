@@ -29,7 +29,7 @@ function CrowdBar({ barClass }) {
 // 개별 관광지 카드 컴포넌트
 function SpotCard({ spot, onClick, lang }) {
   const info = getCongestionInfo(spot.congestion_level, lang);
-  
+
   return (
     <div
       onClick={() => onClick(spot)}
@@ -69,49 +69,68 @@ export default function AlternativeSpots() {
   const navigate = useNavigate();
   const location = useLocation();
   const { lang } = useLanguage();
-  // ListDetail에서 넘겨준 area_cd 받기
-  const originAreaCd = location.state?.area_cd;
+
+  // actual: spot_id = area_cd
+  // predicted: spot_id = content_id
+  const originSpotId = location.state?.spot_id || location.state?.area_cd;
 
   const [originSpot, setOriginSpot] = useState(null);
   const [alternatives, setAlternatives] = useState([]);
   const [loading, setLoading] = useState(true);
-  
 
-useEffect(() => {
-    if (!originAreaCd) return;
-    let isMounted = true; // 컴포넌트 언마운트 방어용
+
+  useEffect(() => {
+    let isMounted = true;
+
+    if (!originSpotId) {
+      setLoading(false);
+      return () => {
+        isMounted = false;
+      };
+    }
 
     const fetchAlternatives = async () => {
       try {
         setLoading(true);
 
-        // 💡 2개의 API를 순차적이 아닌 '병렬(동시)'로 한 번에 호출합니다!
+        // 원본 관광지 + 대안 관광지 동시 조회
         const [originRes, altRes] = await Promise.all([
-          apiClient.get(`/api/spots/${originAreaCd}?lang=${lang}`),
-          apiClient.get(`/api/spots/${originAreaCd}/alternatives?lang=${lang}`)
+          apiClient.get(`/api/spots/${originSpotId}?lang=${lang}`),
+          apiClient.get(`/api/spots/${originSpotId}/alternatives?lang=${lang}`)
         ]);
 
         if (isMounted) {
           setOriginSpot(originRes.data);
-          setAlternatives(altRes.data);
+
+          const altData = Array.isArray(altRes.data)
+            ? altRes.data
+            : altRes.data?.alternatives || [];
+
+          setAlternatives(altData);
         }
       } catch (error) {
         console.error("대안 관광지 로드 실패:", error);
+
+        if (isMounted) {
+          setAlternatives([]);
+        }
       } finally {
-        if (isMounted) setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
     fetchAlternatives();
 
-    return () => { isMounted = false; };
-  }, [originAreaCd, lang]);
+    return () => {
+      isMounted = false;
+    };
+  }, [originSpotId, lang]);
 
   // 카드를 클릭했을 때 해당 장소의 상세 페이지로 이동
   const handleCardClick = (spot) => {
-    // 💡 라우터 설정에 따라 주소가 다를 수 있습니다. (예: '/spot/', '/detail/' 등)
-    // ListDetail 페이지로 연결되는 주소로 맞춰주세요.
-    navigate(`/spots/${spot.area_cd}`); 
+    navigate(`/spots/${spot.spot_id}`);
   };
 
   if (loading) return (
@@ -120,7 +139,12 @@ useEffect(() => {
       <p className="text-[14px] font-medium text-gray-400">{lang === 'en' ? 'Loading...' : '불러오는 중...'}</p>
     </div>
   );
-  if (!originSpot) return <div className="p-10 text-center text-gray-500">{lang === 'en' ? 'Invalid access.' : '잘못된 접근입니다.'}</div>;
+
+  if (!originSpot) return (
+    <div className="p-10 text-center text-gray-500">
+      {lang === 'en' ? 'Invalid access.' : '잘못된 접근입니다.'}
+    </div>
+  );
 
   const originInfo = getCongestionInfo(originSpot?.congestion_level, lang);
 
@@ -153,8 +177,12 @@ useEffect(() => {
       <main className="flex-1 overflow-y-auto px-5 py-4 pb-24 flex flex-col gap-3">
         {alternatives.length > 0 ? (
           alternatives.map((spot) => (
-            // 💡 lang={lang} 추가!
-            <SpotCard key={spot.area_cd} spot={spot} onClick={handleCardClick} lang={lang} />
+            <SpotCard
+              key={spot.spot_id}
+              spot={spot}
+              onClick={handleCardClick}
+              lang={lang}
+            />
           ))
         ) : (
           <div className="text-center text-gray-500 mt-10 text-sm">

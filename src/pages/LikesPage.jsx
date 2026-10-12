@@ -78,8 +78,8 @@ export default function LikesPage() {
               const status = getCongestionStyle(spot.congestion_level, lang);
               return (
                 <button
-                  key={spot.area_cd}
-                  onClick={() => navigate(`/spots/${spot.area_cd}`)}
+                  key={spot.spot_id}
+                  onClick={() => navigate(`/spots/${spot.spot_id}`)}
                   className={`w-full flex items-center gap-4 px-5 py-4 active:bg-gray-50 transition-colors text-left ${i !== 0 ? 'border-t border-gray-100' : ''}`}
                 >
                   {/* 이미지 */}
