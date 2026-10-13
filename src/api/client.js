@@ -2,7 +2,7 @@ import axios from 'axios';
 import { getToken } from './auth';
 
 const apiClient = axios.create({
-  baseURL: 'http://localhost:8000',
+  baseURL: 'https://api.dmu-noa.site',
   headers: {
     'Content-Type': 'application/json',
   },
