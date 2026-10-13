@@ -56,8 +56,8 @@ jobs:
 
     # 7. CloudFront 캐시 무효화
     #    CloudFront 를 S3 앞에 두는 경우, 배포 후 캐시를 비워야 새 버전이 바로 반영됨, "/*" 는 모든 경로의 캐시를 삭제
-      # - name: Invalidate CloudFront cache
-      #   run: |
-      #     aws cloudfront create-invalidation \
-      #       --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} \
-      #       --paths "/*"
+      - name: Invalidate CloudFront cache
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} \
+            --paths "/*"
