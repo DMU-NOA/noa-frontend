@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
 /** 기존 React 화면에서 <TravelBalanceGameModal /> 을 배치하면 버튼이 나타납니다. */
-export default function TravelBalanceGameModal({ gameUrl = 'http://127.0.0.1:8001/' }) {
+export default function TravelBalanceGameModal({ gameUrl = 'https://api.dmu-noa.site' }) {
   const [open, setOpen] = useState(false);
   useEffect(() => {
     if (!open) return undefined;
