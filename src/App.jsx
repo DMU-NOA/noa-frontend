@@ -10,7 +10,7 @@ import LoginRequired from "./components/LoginRequired";
 import Home from "./pages/Home";
 import ListDetail from "./pages/ListDetail";
 import AlternativeSpots from "./pages/AlterPage";
-import { saveToken, isLoggedIn } from "./api/auth";
+import { saveToken } from "./api/auth";
 import MapPage from "./pages/MapPage";
 import ChatPage from "./pages/ChatPage";
 import MyPage from "./pages/MyPage";
@@ -37,14 +37,6 @@ function CallbackHandler() {
   return null;
 }
 
-// 로그인 안 된 상태면 로그인 안내 페이지로
-function PrivateRoute({ children }) {
-  if (!isLoggedIn()) {
-    return <LoginRequired />;
-  }
-  return children;
-}
-
 function App() {
   return (
     <BrowserRouter>
@@ -55,34 +47,29 @@ function App() {
           <div className="flex-1 overflow-y-auto pb-16">
             <Routes>
               <Route path="/callback" element={<CallbackHandler />} />
+              <Route path="/login" element={<LoginRequired />} />
               <Route path="/" element={<Home />} />
               <Route path="/list-detail" element={<ListDetail />} />
               <Route path="/spots/:id" element={<ListDetail />} />
               <Route path="/alternatives" element={<AlternativeSpots />} />
               <Route path="/map" element={<MapPage />} />
-              <Route path="/chat" element={<PrivateRoute><ChatPage /></PrivateRoute>} />
+              <Route path="/chat" element={<ChatPage />} />
               <Route
                 path="/mypage"
                 element={
-                  <PrivateRoute>
-                    <MyPage />
-                  </PrivateRoute>
+                  <MyPage />
                 }
               />
               <Route
                 path="/mypage/profile"
                 element={
-                  <PrivateRoute>
-                    <ProfilePage />
-                  </PrivateRoute>
+                  <ProfilePage />
                 }
               />
               <Route
                 path="/mypage/likes"
                 element={
-                  <PrivateRoute>
-                    <LikesPage />
-                  </PrivateRoute>
+                  <LikesPage />
                 }
               />
             </Routes>

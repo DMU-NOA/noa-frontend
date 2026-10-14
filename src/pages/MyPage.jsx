@@ -1,12 +1,13 @@
 import { useNavigate } from 'react-router-dom';
 import { LogOut, Heart, ChevronRight, Settings } from 'lucide-react';
 import BottomNav from '../components/BottomNav';
-import { getUser, removeToken } from '../api/auth';
+import { getUser, removeToken, isLoggedIn } from '../api/auth';
 import { useLanguage } from '../contexts/LanguageContext';
 
 export default function MyPage() {
   const navigate = useNavigate();
   const user = getUser();
+  const authenticated = isLoggedIn();
   const { lang } = useLanguage();
 
   const handleLogout = () => {
@@ -35,8 +36,8 @@ export default function MyPage() {
         },
         {
           icon: <LogOut className="w-4 h-4 text-gray-400" />,
-          label: lang === 'en' ? 'Logout' : '로그아웃',
-          onClick: handleLogout,
+          label: authenticated ? (lang === 'en' ? 'Logout' : '로그아웃') : (lang === 'en' ? 'Login (optional)' : '로그인 (선택)'),
+          onClick: authenticated ? handleLogout : () => navigate('/login'),
           danger: true,
         },
       ],

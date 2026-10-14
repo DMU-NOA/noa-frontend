@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, MapPin, User, CloudSun, Car, CalendarDays, X, Loader2, Heart, Compass } from 'lucide-react';
 import BottomNav from '../components/BottomNav';
 import apiClient from '../api/client';
+import { isLoggedIn } from '../api/auth';
 import { useLanguage } from '../contexts/LanguageContext';
 
 function useDragScroll() {
@@ -71,7 +72,10 @@ export default function ListDetail() {
     setSpot(currentSpot);
 
     // 2. 좋아요 상태 - actual / predicted 공통
-    try {
+    if (!isLoggedIn()) {
+      const ids = JSON.parse(localStorage.getItem('noa_demo_likes') || '[]');
+      setLiked(ids.includes(String(currentSpot.spot_id)));
+    } else try {
       const likesRes = await apiClient.get(
         `/api/likes?lang=${lang}`
       );
@@ -165,6 +169,15 @@ export default function ListDetail() {
   // 좋아요 토글
 const handleLike = async () => {
   if (!spot?.spot_id || !spot?.content_id) {
+    return;
+  }
+
+  if (!isLoggedIn()) {
+    const saved = JSON.parse(localStorage.getItem('noa_demo_likes') || '[]');
+    const key = String(spot.spot_id);
+    const next = liked ? saved.filter(id => id !== key) : [...new Set([...saved, key])];
+    localStorage.setItem('noa_demo_likes', JSON.stringify(next));
+    setLiked(!liked);
     return;
   }
 

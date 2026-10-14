@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, Heart, Loader2, MapPin, ChevronRight } from 'lucide-react';
 import BottomNav from '../components/BottomNav';
 import apiClient from '../api/client';
+import { isLoggedIn } from '../api/auth';
 import { useLanguage } from '../contexts/LanguageContext';
 
 const getCongestionStyle = (level, lang) => {
@@ -24,6 +25,15 @@ export default function LikesPage() {
 
   useEffect(() => {
     setIsLoading(true);
+    if (!isLoggedIn()) {
+      const ids = JSON.parse(localStorage.getItem('noa_demo_likes') || '[]');
+      if (!ids.length) { setLikes([]); setIsLoading(false); return; }
+      apiClient.get(`/api/spots?lang=${lang}`).then(res => {
+        const lookup = new Map((res.data.data || []).map(spot => [String(spot.spot_id), spot]));
+        setLikes(ids.map(id => lookup.get(id)).filter(Boolean));
+      }).catch(err => console.error('체험용 찜 목록 로드 실패:', err)).finally(() => setIsLoading(false));
+      return;
+    }
     apiClient.get(`/api/likes?lang=${lang}`)
       .then(res => setLikes(res.data))
       .catch(err => console.error('좋아요 목록 로드 실패:', err))
