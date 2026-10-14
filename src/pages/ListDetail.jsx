@@ -362,6 +362,9 @@ const handleLike = async () => {
               {forecastMeta?.source === 'validated_ml_v2'
                 ? (lang === 'en' ? 'NOA validated ML · area-level hourly forecast' : 'NOA 검증 ML · 서울시 지역 단위 시간별 예측')
                 : (lang === 'en' ? 'Official Seoul CityData hourly forecast' : '서울시 CityData 공식 시간별 예보')}
+              {forecastMeta?.historical && (lang === 'en'
+                ? ' · Historical forecast only (not a prediction for today)'
+                : ' · 과거에 발행된 시간별 예측 자료 (현재 시점 예측 아님)')}
               {forecastMeta?.regional_reference && (lang === 'en'
                 ? ' · Nearby region reference, not a direct tourist-site measurement'
                 : ' · 인근 지역 참고값 (관광지 자체 실측 아님)')}
@@ -370,6 +373,11 @@ const handleLike = async () => {
                 { timeZone: 'Asia/Seoul', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }
               )}`}
             </p>
+            {forecastMeta?.historical && (
+              <p className="mb-2 text-[11px] font-semibold text-amber-700">
+                {lang === 'en' ? 'Demo reference: the latest saved forecast is expired.' : '시연용 참고: 마지막 저장 예보로, 현재 시간의 예측값이 아닙니다.'}
+              </p>
+            )}
             <div className="flex items-end justify-between h-48 px-1">
               {forecast.map((data, index) => {
                 const heightPercent = hasPopulationForecast

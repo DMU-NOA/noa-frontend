@@ -48,7 +48,7 @@ export default function MapPage() {
   useEffect(() => {
     if (spots.length > 0 && location.state?.selectedSpot) {
       const targetSpot = spots.find(
-  s => s.spot_id === location.state.selectedSpot
+  s => String(s.spot_id) === String(location.state.selectedSpot) || String(s.content_id) === String(location.state.selectedSpot) || (s.area_cd && String(s.area_cd) === String(location.state.selectedSpot))
 );
       if (targetSpot) {
         setMapCenter({ lat: parseFloat(targetSpot.mapy), lng: parseFloat(targetSpot.mapx) });

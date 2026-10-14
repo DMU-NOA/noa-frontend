@@ -117,7 +117,7 @@ export default function ChatPage() {
                       className="w-full h-full object-cover cursor-pointer active:opacity-95"
                     />
                     <button
-                      onClick={() => navigate(`/map`, { state: { selectedSpot: msg.spot.area_cd } })}
+                      onClick={() => navigate(`/map`, { state: { selectedSpot: msg.spot.spot_id || msg.spot.content_id || msg.spot.area_cd } })}
                       className="absolute top-3 right-3 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold text-white active:opacity-80"
                       style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(8px)' }}
                     >
