@@ -33,7 +33,18 @@ jobs:
         run: npm ci 
 
       # 4. 프론트엔드 빌드 -> ./dist 폴더에 정적 파일 생성
+      - name: Verify Kakao Maps key
+        env:
+          VITE_KAKAO_APP_KEY: ${{ secrets.VITE_KAKAO_APP_KEY }}
+        run: |
+          if [ -z "$VITE_KAKAO_APP_KEY" ]; then
+            echo "::error::Missing GitHub Actions secret VITE_KAKAO_APP_KEY. Set the Kakao JavaScript app key before deploying."
+            exit 1
+          fi
+
       - name: Build
+        env:
+          VITE_KAKAO_APP_KEY: ${{ secrets.VITE_KAKAO_APP_KEY }}
         run: npm run build
 
       # 5. OIDC로 AWS 자격 증명 획득
