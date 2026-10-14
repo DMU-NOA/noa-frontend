@@ -49,7 +49,7 @@ export default function ChatPage() {
     setIsLoading(true);
 
     try {
-      const res = await apiClient.post("/api/chat", { message: text, lang });
+      const res = await apiClient.post("/api/chat/", { message: text, lang });
       const replyData = res.data;
       setMessages(prev => [...prev, {
         role: "ai",
