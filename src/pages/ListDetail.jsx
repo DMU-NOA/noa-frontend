@@ -545,10 +545,17 @@ const handleLike = async () => {
                             <> · {new Date(addInfo.weather.observed_at).toLocaleString(lang === 'en' ? 'en-US' : 'ko-KR', { timeZone: 'Asia/Seoul', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })} {lang === 'en' ? 'observed' : '관측'}</>
                           )}
                         </p>
+                        {addInfo.weather.stale && (
+                          <p className="mb-4 rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 text-[12px] font-semibold text-amber-800">
+                            {lang === 'en'
+                              ? 'Historical observation (not current weather or air quality).'
+                              : '과거 관측값입니다. 현재 날씨·미세먼지 정보가 아닙니다.'}
+                          </p>
+                        )}
                         <div className="flex flex-col gap-5 text-gray-700">
                       <div className="bg-linear-to-br from-sky-50 to-blue-50 p-5 rounded-3xl flex justify-between items-center shadow-sm">
                         <div className="flex flex-col">
-                          <span className="text-sm font-bold text-sky-800 mb-1">{lang === 'en' ? 'Current Temp' : '현재 기온'}</span>
+                          <span className="text-sm font-bold text-sky-800 mb-1">{addInfo.weather.stale ? (lang === 'en' ? 'Recorded temperature' : '관측 당시 기온') : (lang === 'en' ? 'Current Temp' : '현재 기온')}</span>
                           <span className="text-3xl font-black text-sky-600">{addInfo.weather.temp != null ? `${addInfo.weather.temp}℃` : '-'}</span>
                         </div>
                         <div className="text-right flex flex-col gap-1">
@@ -588,8 +595,8 @@ const handleLike = async () => {
                     ) : (
                       <div className="bg-gray-50 rounded-2xl p-5 text-sm text-gray-500 text-center">
                         {lang === 'en'
-                          ? 'No recent weather or air-quality observation is available for this spot.'
-                          : '이 여행지에 연결된 최근 3시간의 날씨·미세먼지 관측값이 없습니다.'}
+                          ? 'No weather or air-quality observation is stored for this area.'
+                          : '이 여행지에 연결된 날씨·미세먼지 관측 기록이 없습니다.'}
                       </div>
                     )}
                   </div>
