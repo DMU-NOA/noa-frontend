@@ -5,6 +5,7 @@ import { Map, MapMarker, CustomOverlayMap } from "react-kakao-maps-sdk";
 import { Search, Locate, Heart } from "lucide-react";
 import BottomNav from "../components/BottomNav";
 import apiClient from "../api/client";
+import { isLoggedIn } from "../api/auth";
 import { useLanguage } from "../contexts/LanguageContext";
 
 export default function MapPage() {
@@ -38,9 +39,19 @@ export default function MapPage() {
 
     apiClient.get(`/api/spots?lang=${lang}`).then(res => setSpots(res.data.data));
 
-    apiClient.get(`/api/likes?lang=${lang}`)
-      .then(res => setLikes(res.data))
-      .catch(err => console.error("찜 목록 가져오기 실패", err));
+    if (isLoggedIn()) {
+      apiClient.get(`/api/likes?lang=${lang}`)
+        .then(res => setLikes(res.data))
+        .catch(err => console.error("찜 목록 가져오기 실패", err));
+    } else {
+      const savedIds = JSON.parse(localStorage.getItem("noa_demo_likes") || "[]");
+      apiClient.get(`/api/spots?lang=${lang}`)
+        .then(res => {
+          const saved = new Set(savedIds.map(String));
+          setLikes((res.data.data || []).filter(spot => saved.has(String(spot.spot_id))));
+        })
+        .catch(err => console.error("체험용 찜 목록 로드 실패", err));
+    }
 
   }, [lang, location.state?.selectedSpot]);
 
@@ -127,6 +138,15 @@ const handleLocateMe = () => {
   const toggleLike = async (e, spot) => {
     e.stopPropagation();
     const isLiked = likes.some(l => l.spot_id === spot.spot_id);
+
+    if (!isLoggedIn()) {
+      const saved = JSON.parse(localStorage.getItem("noa_demo_likes") || "[]");
+      const key = String(spot.spot_id);
+      const next = isLiked ? saved.filter(id => String(id) !== key) : [...new Set([...saved.map(String), key])];
+      localStorage.setItem("noa_demo_likes", JSON.stringify(next));
+      setLikes(prev => isLiked ? prev.filter(item => String(item.spot_id) !== key) : [spot, ...prev]);
+      return;
+    }
 
     try {
       if (isLiked) {
