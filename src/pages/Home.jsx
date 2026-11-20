@@ -1,3 +1,5 @@
+import useCongestionClock from '../utils/useCongestionClock';
+import { congestionStage, currentCongestionLevel } from '../utils/congestion';
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -43,6 +45,7 @@ function useDragScroll() {
 }
 
 export default function Home() {
+  const congestionNow = useCongestionClock();
   const navigate = useNavigate();
   const { lang, toggleLang } = useLanguage(); // 💡 언어 상태와 변경 함수 꺼내기
 
@@ -116,11 +119,14 @@ export default function Home() {
   };
 
   const getCongestionStyle = (level) => {
-    const s = String(level ?? "").toLowerCase();
-    if (!s || s === '데이터 없음' || s === 'no data') return { bg: 'bg-white/20', text: 'text-white/70', label: lang === 'en' ? 'Not available' : '혼잡도 미제공' };
-    if (s.includes('혼잡') || s.includes('붐빔') || s.includes('crowd')) return { bg: 'bg-red-500/80', text: 'text-white', label: lang === 'en' ? 'Crowded' : '혼잡' };
-    if (s.includes('보통') || s.includes('normal') || s.includes('moderate')) return { bg: 'bg-orange-400/80', text: 'text-white', label: lang === 'en' ? 'Normal' : '보통' };
-    return { bg: 'bg-emerald-500/80', text: 'text-white', label: lang === 'en' ? 'Quiet' : '여유' };
+    const stage = congestionStage(level);
+    const styles = [
+      { bg: 'bg-emerald-500/80', text: 'text-white', label: lang === 'en' ? 'Quiet' : '여유' },
+      { bg: 'bg-orange-400/80', text: 'text-white', label: lang === 'en' ? 'Normal' : '보통' },
+      { bg: 'bg-orange-600/80', text: 'text-white', label: lang === 'en' ? 'Slightly crowded' : '약간 붐빔' },
+      { bg: 'bg-red-500/80', text: 'text-white', label: lang === 'en' ? 'Crowded' : '혼잡' },
+    ];
+    return styles[stage] ?? { bg: 'bg-white/20', text: 'text-white/70', label: lang === 'en' ? 'Not available' : '혼잡도 미제공' };
   };
 
   // 💡 언어가 바뀔 때마다 데이터를 새로 불러옵니다
@@ -169,7 +175,7 @@ export default function Home() {
   // 💡 영문 카테고리도 인식할 수 있도록 필터링 로직 확장
   const filteredSpots = spots.filter(spot => {
     const cat = spot.category || "";
-    const lvl = spot.congestion_level || "";
+    const lvl = currentCongestionLevel(spot, congestionNow) || "";
     
     if (activeFilter === 'all') return true;
     if (activeFilter === 'relax') return lvl.includes('여유') || lvl.includes('보통') || lvl.toLowerCase().includes('relax') || lvl.toLowerCase().includes('normal') || lvl.toLowerCase().includes('moderate');
@@ -278,7 +284,7 @@ export default function Home() {
             </div>
           ) : (
             filteredSpots.map((spot) => {
-              const status = getCongestionStyle(spot.congestion_level);
+              const status = getCongestionStyle(currentCongestionLevel(spot, congestionNow));
               return (
                 <div
                   key={spot.spot_id}
@@ -309,9 +315,9 @@ export default function Home() {
   </span>
 
   <span className="px-2 py-0.5 rounded-full text-[9px] font-semibold bg-black/35 text-white backdrop-blur-sm">
-    {spot.congestion_source === 'actual'
+    {currentCongestionLevel(spot, congestionNow) && spot.congestion_source === 'actual'
       ? (lang === 'en' ? 'Observed' : '실측')
-      : spot.congestion_source === 'predicted'
+      : currentCongestionLevel(spot, congestionNow) && spot.congestion_source === 'predicted'
         ? spot.prediction_verified
           ? (lang === 'en' ? 'ML Prediction' : 'ML 예측')
           : (lang === 'en' ? 'Experimental estimate' : '시범 추정')
