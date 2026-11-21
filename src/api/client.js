@@ -2,12 +2,11 @@ import axios from 'axios';
 import { getToken } from './auth';
 
 const apiClient = axios.create({
-  baseURL: 'https://api.dmu-noa.site',
+  baseURL: import.meta.env.VITE_BACKEND_URL || 'https://api.dmu-noa.site',
   headers: {
     'Content-Type': 'application/json',
   },
 });
-
 // 요청마다 JWT 토큰 자동으로 헤더에 붙이기
 apiClient.interceptors.request.use((config) => {
   const token = getToken();
