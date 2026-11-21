@@ -1,5 +1,3 @@
-import useCongestionClock from '../utils/useCongestionClock';
-import { congestionStage, currentCongestionLevel } from '../utils/congestion';
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, MapPin, User, CloudSun, Car, CalendarDays, X, Loader2, Heart, Compass } from 'lucide-react';
@@ -35,7 +33,6 @@ function useDragScroll() {
 }
 
 export default function ListDetail() {
-  const congestionNow = useCongestionClock();
   const { id } = useParams();
   const navigate = useNavigate();
   const { lang } = useLanguage();
@@ -212,14 +209,11 @@ const handleLike = async () => {
   };
 
   const getCongestionInfo = (level) => {
-    const stage = congestionStage(level);
-    const styles = [
-      { rate: 20, text: lang === 'en' ? 'Relax' : '여유', color: 'text-emerald-500', bar: 'bg-emerald-500' },
-      { rate: 50, text: lang === 'en' ? 'Normal' : '보통', color: 'text-orange-500', bar: 'bg-orange-400' },
-      { rate: 75, text: lang === 'en' ? 'Slightly crowded' : '약간 붐빔', color: 'text-orange-600', bar: 'bg-orange-600' },
-      { rate: 100, text: lang === 'en' ? 'Crowded' : '혼잡', color: 'text-red-500', bar: 'bg-red-500' },
-    ];
-    return styles[stage] ?? { rate: 0, text: lang === 'en' ? 'Not available' : '혼잡도 미제공', color: 'text-gray-400', bar: 'bg-gray-400' };
+    const l = level ? level.toLowerCase() : '';
+    if (!l || l === '데이터 없음' || l === 'no data') return { rate: 0, text: lang === 'en' ? 'Not available' : '혼잡도 미제공', color: 'text-gray-400', bar: 'bg-gray-400' };
+    if (l.includes('혼잡') || l.includes('붐빔') || l.includes('crowd')) return { rate: 100, text: lang === 'en' ? 'Crowded' : '혼잡', color: 'text-red-500', bar: 'bg-red-500' };
+    if (l.includes('보통') || l.includes('normal')) return { rate: 50, text: lang === 'en' ? 'Normal' : '보통', color: 'text-orange-500', bar: 'bg-orange-400' };
+    return { rate: 20, text: lang === 'en' ? 'Relax' : '여유', color: 'text-emerald-500', bar: 'bg-emerald-500' };
   };
 
   const hasPopulationForecast = forecast.some(d => Number.isFinite(d.population) && d.population > 0);
@@ -250,7 +244,7 @@ const handleLike = async () => {
   );
   if (!spot) return <div className="p-10 text-center text-gray-500 font-bold">{lang === 'en' ? 'Data not found 😭' : '잘못된 접근이거나 데이터를 찾을 수 없습니다 😭'}</div>;
 
-  const info = getCongestionInfo(currentCongestionLevel(spot, congestionNow));
+  const info = getCongestionInfo(spot.congestion_level);
 
   return (
     <div className="w-full min-h-full bg-white relative pb-20">
@@ -314,28 +308,15 @@ const handleLike = async () => {
   </h2>
 
   <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-gray-100 text-gray-500">
-    {currentCongestionLevel(spot, congestionNow) && spot.congestion_source === 'actual'
-      ? (lang === 'en' ? 'Observed area' : '지역 관측')
-      : currentCongestionLevel(spot, congestionNow) && spot.congestion_source === 'predicted'
+    {spot.congestion_source === 'actual'
+      ? (lang === 'en' ? 'Observed' : '실측')
+      : spot.congestion_source === 'predicted'
         ? spot.prediction_verified
           ? (lang === 'en' ? 'ML Prediction' : 'ML 예측')
           : (lang === 'en' ? 'Experimental estimate · not validated' : '시범 추정 · 미검증')
         : (lang === 'en' ? 'Unavailable' : '미제공')}
   </span>
 </div>
-
-        {currentCongestionLevel(spot, congestionNow) && (
-          <p className="text-xs text-gray-500 mb-2">
-            {spot.congestion_source === 'actual'
-              ? (lang === 'en' ? 'Seoul area observation; not a measurement inside this facility.' : '서울시 지역 단위 관측이며, 해당 시설 내부의 혼잡도를 직접 측정한 값은 아닙니다.')
-              : (lang === 'en' ? 'Experimental nearby-area estimate; accuracy is not verified.' : '인근 지역 관측에 기반한 참고 추정이며, 정확도가 검증된 값은 아닙니다.')}
-          </p>
-        )}
-        <p className="text-xs text-gray-500 mb-4">
-          {currentCongestionLevel(spot, congestionNow)
-            ? `${lang === 'en' ? 'Data as of' : '데이터 기준'} ${new Date(spot.updated_at).toLocaleString(lang === 'en' ? 'en-US' : 'ko-KR', { timeZone: 'Asia/Seoul' })} (KST)`
-            : (lang === 'en' ? 'No recent evidence available.' : '최근 관측 근거가 없어 현재 혼잡도를 제공하지 않습니다.')}
-        </p>
         <div className="mb-6">
           <div className="h-3 rounded-full bg-gray-100 overflow-hidden mb-2">
             <div
@@ -347,8 +328,7 @@ const handleLike = async () => {
             {[
               { key: 'quiet', label: lang === 'en' ? 'Quiet' : '여유', active: info.text === '여유' || info.text === 'Relax', color: 'text-emerald-500' },
               { key: 'normal', label: lang === 'en' ? 'Normal' : '보통', active: info.text === '보통' || info.text === 'Normal', color: 'text-orange-500' },
-              { key: 'slightly', label: lang === 'en' ? 'Slightly crowded' : '약간 붐빔', active: info.text === '약간 붐빔' || info.text === 'Slightly crowded', color: 'text-orange-600' },
-                { key: 'crowded', label: lang === 'en' ? 'Crowded' : '혼잡', active: info.text === '혼잡' || info.text === 'Crowded', color: 'text-red-500' },
+              { key: 'crowded', label: lang === 'en' ? 'Crowded' : '혼잡', active: info.text === '혼잡' || info.text === 'Crowded', color: 'text-red-500' },
             ].map(({ key, label, active, color }) => (
               <span key={key} className={active ? `text-[14px] font-bold ${color}` : 'text-[11px] text-gray-300'}>
                 {label}
